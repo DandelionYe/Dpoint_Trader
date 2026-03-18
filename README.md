@@ -22,9 +22,16 @@ A machine-learning pipeline that generates next-day directional signals (**Dpoin
 
 ---
 
-## 📝 Release Notes
+> **Latest stable release:** **Ver2.0**  
+> See the update notes here: [English](./CHANGELOG.md) | [中文](./CHANGELOG.zh-CN.md) | [Releases](../../releases)
 
-See release notes here: [中文](./CHANGELOG.zh-CN.md) | [English](./CHANGELOG.en.md)
+---
+
+## 📌 Documentation
+
+- [Changelog](./CHANGELOG.md)
+- [更新日志（中文）](./CHANGELOG.zh-CN.md)
+- [GitHub Releases](../../releases)
 
 ---
 

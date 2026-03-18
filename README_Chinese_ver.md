@@ -22,9 +22,16 @@
 
 ---
 
-## 📝 更新日志
+> **当前稳定版本：** **Ver2.0**  
+> 更新日志请见：[中文](./CHANGELOG.zh-CN.md) | [English](./CHANGELOG.md) | [Releases](../../releases)
 
-查看更新日志：[中文](./CHANGELOG.zh-CN.md) | [English](./CHANGELOG.en.md)
+---
+
+## 📌 文档导航
+
+- [更新日志（中文）](./CHANGELOG.zh-CN.md)
+- [Changelog (English)](./CHANGELOG.md)
+- [GitHub Releases](../../releases)
 
 ---
 
