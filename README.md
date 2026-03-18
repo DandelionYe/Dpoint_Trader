@@ -22,6 +22,12 @@ A machine-learning pipeline that generates next-day directional signals (**Dpoin
 
 ---
 
+## 📝 Release Notes
+
+See release notes here: [中文](./CHANGELOG.zh-CN.md) | [English](./CHANGELOG.en.md)
+
+---
+
 ## Table of Contents
 
 - [Core Concept](#core-concept)

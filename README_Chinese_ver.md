@@ -22,6 +22,12 @@
 
 ---
 
+## 📝 更新日志
+
+查看更新日志：[中文](./CHANGELOG.zh-CN.md) | [English](./CHANGELOG.en.md)
+
+---
+
 ## 目录
 
 - [核心概念](#核心概念)
