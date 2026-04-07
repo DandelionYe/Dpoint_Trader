@@ -1,0 +1,80 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Test / cache
+# =========================
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# =========================
+# Build / packaging
+# =========================
+build/
+dist/
+.eggs/
+*.egg-info/
+pip-wheel-metadata/
+
+# =========================
+# IDE / OS
+# =========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Secrets / local config
+# =========================
+.env
+.env.*
+*.pem
+*.key
+
+# =========================
+# Project data
+# 保留 data 目录，但不提交实际数据文件
+# =========================
+data/*
+!data/.gitkeep
+!data/**/.gitkeep
+
+# =========================
+# Training / experiment outputs
+# =========================
+output/
+logs/
+runs/
+checkpoints/
+artifacts/
+models/
+
+# =========================
+# Temporary files
+# =========================
+*.log
+*.tmp
+*.bak
