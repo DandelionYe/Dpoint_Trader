@@ -33,3 +33,6 @@ output/
 # Environment
 .env
 *.log
+
+#data
+data/

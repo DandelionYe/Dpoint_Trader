@@ -67,9 +67,15 @@ def sample_model_config(
 
 def sample_trade_config(rng: np.random.Generator) -> Dict[str, Any]:
     """采样交易参数配置。"""
+    # 阈值范围对齐模型实际输出分布（通常集中在 0.45~0.55）
+    buy_threshold = float(rng.uniform(0.48, 0.56))
+    sell_threshold = float(rng.uniform(0.44, 0.52))
+    # 保证 buy > sell
+    if buy_threshold <= sell_threshold:
+        buy_threshold = sell_threshold + 0.02
     return {
-        "buy_threshold": float(rng.uniform(0.50, 0.65)),
-        "sell_threshold": float(rng.uniform(0.35, 0.50)),
+        "buy_threshold": buy_threshold,
+        "sell_threshold": sell_threshold,
         "confirm_days": int(rng.choice([1, 2, 3])),
         "max_hold_days": int(rng.choice([5, 10, 20, 40])),
     }

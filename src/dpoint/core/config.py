@@ -57,8 +57,8 @@ class ModelConfig:
 @dataclass
 class TradeConfig:
     """交易参数配置。"""
-    buy_threshold: float = 0.55
-    sell_threshold: float = 0.45
+    buy_threshold: float = 0.52
+    sell_threshold: float = 0.48
     confirm_days: int = 1
     max_hold_days: int = 20
     take_profit: float = 0.0
