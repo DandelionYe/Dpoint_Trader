@@ -50,7 +50,7 @@ def test_random_search_basic(sample_single_df):
 
     evaluate_fn = create_evaluate_fn_single(sample_single_df, config)
 
-    state = random_search(
+    state, _rng = random_search(
         config, evaluate_fn,
         model_types=["sgd"],  # 只用 sgd 加速（避免 scipy L-BFGS-B 崩溃）
     )

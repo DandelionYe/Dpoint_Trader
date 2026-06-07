@@ -5,10 +5,12 @@ Phase 3：集成特征→模型→回测→指标的完整 evaluate_fn。
 """
 from __future__ import annotations
 
+import json
 import logging
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -50,6 +52,85 @@ def update_top_k(pool: List[CandidateResult], candidate: CandidateResult, k: int
     pool.append(candidate)
     pool.sort(key=lambda c: c.score, reverse=True)
     return pool[:k]
+
+
+# ==============================================================
+# 搜索状态序列化（用于迭代训练 / resume）
+# ==============================================================
+
+def _json_default(obj: Any) -> Any:
+    """JSON 序列化辅助：处理 numpy 类型和无穷值。"""
+    if isinstance(obj, (np.integer,)):
+        return int(obj)
+    if isinstance(obj, (np.floating,)):
+        val = float(obj)
+        if np.isinf(val) or np.isnan(val):
+            return str(val)  # "inf" / "-inf" / "nan" 以字符串保存
+        return val
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
+def _json_loads_hook(d: dict) -> dict:
+    """JSON 反序列化辅助：恢复 "inf" / "-inf" 字符串为 float。"""
+    for k, v in d.items():
+        if isinstance(v, str):
+            if v == "inf":
+                d[k] = float("inf")
+            elif v == "-inf":
+                d[k] = float("-inf")
+            elif v == "nan":
+                d[k] = float("nan")
+    return d
+
+
+def save_search_state(
+    state: SearchState,
+    rng: np.random.Generator,
+    path: Path,
+) -> None:
+    """将搜索状态和 RNG 状态保存到 JSON 文件。"""
+    data = {
+        "best_score": state.best_score,
+        "best_config": state.best_config,
+        "top_k_pool": [asdict(c) for c in state.top_k_pool],
+        "all_results": [asdict(c) for c in state.all_results],
+        "n_evaluated": state.n_evaluated,
+        "n_skipped": state.n_skipped,
+        "n_errors": state.n_errors,
+        "rng_state": rng.bit_generator.state,
+    }
+    path.write_text(json.dumps(data, indent=2, default=_json_default), encoding="utf-8")
+    logger.info("Search state saved: %s (%d evaluated, top-K size %d)", path, state.n_evaluated, len(state.top_k_pool))
+
+
+def load_search_state(path: Path) -> Tuple[SearchState, dict]:
+    """
+    从 JSON 文件加载搜索状态。
+    返回 (SearchState, rng_state_dict)。
+    """
+    raw = path.read_text(encoding="utf-8")
+    data = json.loads(raw, object_hook=_json_loads_hook)
+
+    state = SearchState(
+        best_score=data["best_score"],
+        best_config=data["best_config"],
+        top_k_pool=[CandidateResult(**c) for c in data["top_k_pool"]],
+        all_results=[CandidateResult(**c) for c in data["all_results"]],
+        n_evaluated=data["n_evaluated"],
+        n_skipped=data["n_skipped"],
+        n_errors=data["n_errors"],
+    )
+    rng_state = data["rng_state"]
+
+    logger.info(
+        "Search state loaded: %d evaluated, best_score=%.4f, top-K size %d",
+        state.n_evaluated, state.best_score, len(state.top_k_pool),
+    )
+    return state, rng_state
 
 
 def create_evaluate_fn_single(
@@ -302,13 +383,39 @@ def random_search(
     model_types: Optional[List[str]] = None,
     metric_name: str = "",
     progress_fn: Optional[Callable[[int, int, SearchState], None]] = None,
-) -> SearchState:
-    """随机搜索引擎。"""
-    rng = np.random.Generator(np.random.PCG64(config.search.seed))
+    initial_state: Optional[SearchState] = None,
+    rng: Optional[np.random.Generator] = None,
+) -> Tuple[SearchState, np.random.Generator]:
+    """
+    随机搜索引擎。
+
+    Args:
+        config: 运行配置
+        evaluate_fn: 评估函数
+        model_types: 搜索的模型类型列表
+        metric_name: 目标函数名称
+        progress_fn: 进度回调
+        initial_state: 恢复模式 — 传入上一轮的搜索状态
+        rng: 外部传入的 RNG（恢复模式下传入已恢复状态的 RNG）
+
+    Returns:
+        (SearchState, rng) — 返回 RNG 以便调用方保存最终状态
+    """
+    if rng is None:
+        rng = np.random.Generator(np.random.PCG64(config.search.seed))
     metric_fn = get_metric_fn(metric_name or config.search.metric)
     model_types = model_types or ALL_MODELS
 
-    state = SearchState()
+    # 恢复模式：从 initial_state 继续
+    if initial_state is not None:
+        state = initial_state
+        logger.info(
+            "Resuming search: %d previously evaluated, best_score=%.4f, top-K pool size %d",
+            state.n_evaluated, state.best_score, len(state.top_k_pool),
+        )
+    else:
+        state = SearchState()
+
     n_candidates = config.search.n_candidates
     n_rounds = config.search.n_rounds
     candidates_per_round = max(1, n_candidates // n_rounds)
@@ -371,4 +478,4 @@ def random_search(
         state.n_evaluated, state.n_skipped, state.n_errors, state.best_score,
     )
 
-    return state
+    return state, rng

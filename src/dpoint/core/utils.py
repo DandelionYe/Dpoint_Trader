@@ -89,7 +89,7 @@ def get_package_versions(packages: list[str]) -> dict[str, str]:
             import importlib
             mod = importlib.import_module(pkg.replace("-", "_"))
             versions[pkg] = getattr(mod, "__version__", "unknown")
-        except ImportError:
+        except (ImportError, OSError, Exception):
             versions[pkg] = "not_installed"
     return versions
 
