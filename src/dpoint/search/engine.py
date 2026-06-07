@@ -349,6 +349,7 @@ def create_evaluate_fn_basket(
             val_df = df_feat[val_mask].copy()
             val_df = val_df.copy()
             val_df["pred_score"] = proba
+            val_df["label"] = y[val_mask].values
 
             rank_ics = []
             for dt, group in val_df.groupby("date"):
