@@ -90,6 +90,27 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("--model_types", nargs="+", default=None, help="搜索的模型类型列表")
     resume.add_argument("--config", default=None, help="JSON 配置文件路径")
 
+    # === dpoint fetch ===
+    fetch = subparsers.add_parser("fetch", help="自动获取价格数据（需要 XtMiniQMT 运行）")
+    fetch_sub = fetch.add_subparsers(dest="fetch_mode", help="获取模式")
+
+    # dpoint fetch single
+    fetch_single = fetch_sub.add_parser("single", help="获取单只股票历史数据")
+    fetch_single.add_argument("--code", required=True, help="股票代码，如 000001.SZ")
+    fetch_single.add_argument("--start", default="", help="起始日期 YYYYMMDD（默认6年前）")
+    fetch_single.add_argument("--end", default="", help="结束日期 YYYYMMDD（默认今天）")
+    fetch_single.add_argument("--output", default="", help="输出文件路径")
+    fetch_single.add_argument("--format", default="xlsx", choices=["xlsx", "csv"], help="输出格式")
+
+    # dpoint fetch basket
+    fetch_basket = fetch_sub.add_parser("basket", help="获取行业篮子数据")
+    fetch_basket.add_argument("--industry", required=True, help="行业代码，如 C27")
+    fetch_basket.add_argument("--start", default="", help="起始日期 YYYYMMDD（默认6年前）")
+    fetch_basket.add_argument("--end", default="", help="结束日期 YYYYMMDD（默认今天）")
+    fetch_basket.add_argument("--output", default="", help="输出目录路径")
+    fetch_basket.add_argument("--format", default="csv", choices=["xlsx", "csv"], help="输出格式")
+    fetch_basket.add_argument("--db", default="", help="行业分类 SQLite 路径")
+
     return parser
 
 
@@ -787,6 +808,119 @@ def _run_resume_basket(config, state, rng, data_path, parent_dir, args, logger) 
     return 0
 
 
+def run_fetch_single(args) -> int:
+    """获取单只股票历史数据。"""
+    logger = logging.getLogger("dpoint.fetch.single")
+
+    from dpoint.data.fetch.formatter import qmt_to_dpoint_single
+    from dpoint.data.fetch.qmt_client import QMTClient
+
+    # 确定输出路径
+    if args.output:
+        output_path = Path(args.output)
+    else:
+        from datetime import datetime, timedelta
+        end = args.end or datetime.now().strftime("%Y%m%d")
+        if args.start:
+            start = args.start
+        else:
+            start = (datetime.now() - timedelta(days=365 * 6)).strftime("%Y%m%d")
+        code_clean = args.code.replace(".", "_")
+        ext = "xlsx" if args.format == "xlsx" else "csv"
+        output_path = Path("data") / f"{code_clean}_{start}_{end}.{ext}"
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 获取数据
+    logger.info("Fetching %s from QMT...", args.code)
+    try:
+        client = QMTClient()
+    except ImportError as e:
+        logger.error(str(e))
+        return 1
+
+    raw_df = client.fetch_daily_history(args.code, start_date=args.start, end_date=args.end)
+    if raw_df.empty:
+        logger.error("未获取到 %s 的数据", args.code)
+        return 1
+
+    # 转换格式
+    df = qmt_to_dpoint_single(raw_df)
+    logger.info("Converted to Dpoint_Trader format: %d rows", len(df))
+
+    # 保存
+    if output_path.suffix in (".xlsx", ".xls"):
+        df.to_excel(output_path, index=False, engine="openpyxl")
+    else:
+        df.to_csv(output_path, index=False, encoding="utf-8-sig")
+
+    logger.info("Saved to: %s", output_path)
+    logger.info("可直接用于: dpoint single --data_path %s", output_path)
+    return 0
+
+
+def run_fetch_basket(args) -> int:
+    """获取行业篮子数据。"""
+    logger = logging.getLogger("dpoint.fetch.basket")
+
+    from dpoint.data.fetch.formatter import generate_csv_filename, qmt_to_dpoint_csv
+    from dpoint.data.fetch.industry import DEFAULT_DB_PATH, IndustryDB
+    from dpoint.data.fetch.qmt_client import QMTClient
+
+    # 确定数据库路径
+    db_path = args.db if args.db else DEFAULT_DB_PATH
+
+    # 查询行业成员
+    try:
+        db = IndustryDB(db_path)
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        return 1
+
+    members = db.get_industry_members(args.industry)
+    if not members:
+        logger.error("行业代码 '%s' 未找到任何股票", args.industry)
+        logger.info("可用行业示例:")
+        for info in db.list_industries()[:10]:
+            logger.info("  %s %s (%d只)", info.code, info.name, info.count)
+        return 1
+
+    logger.info("行业 %s 共 %d 只股票", args.industry, len(members))
+
+    # 确定输出目录
+    if args.output:
+        output_dir = Path(args.output)
+    else:
+        output_dir = Path("data") / f"basket_{args.industry}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 批量获取
+    try:
+        client = QMTClient()
+    except ImportError as e:
+        logger.error(str(e))
+        return 1
+
+    # 确定起始日期（用于文件名）
+    from datetime import datetime, timedelta
+    start = args.start or (datetime.now() - timedelta(days=365 * 6)).strftime("%Y%m%d")
+
+    data = client.fetch_batch(members, start_date=args.start, end_date=args.end)
+
+    # 保存
+    saved = 0
+    for code, raw_df in data.items():
+        df = qmt_to_dpoint_csv(raw_df)
+        filename = generate_csv_filename(code, start)
+        filepath = output_dir / filename
+        df.to_csv(filepath, index=False, encoding="utf-8-sig")
+        saved += 1
+
+    logger.info("Saved %d stocks to: %s", saved, output_dir)
+    logger.info("可直接用于: dpoint basket --basket_path %s", output_dir)
+    return 0
+
+
 def main(argv=None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -803,6 +937,14 @@ def main(argv=None) -> int:
         return run_basket(args)
     elif args.command == "resume":
         return run_resume(args)
+    elif args.command == "fetch":
+        if not args.fetch_mode:
+            parser.parse_args(["fetch", "--help"])
+            return 1
+        if args.fetch_mode == "single":
+            return run_fetch_single(args)
+        elif args.fetch_mode == "basket":
+            return run_fetch_basket(args)
 
     return 0
 
