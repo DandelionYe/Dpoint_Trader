@@ -23,11 +23,13 @@ torch = ["torch>=2.5"]
 xgboost = ["xgboost>=2.1"]
 explain = ["shap>=0.45"]
 plotly = ["plotly>=5.18"]
+gui = ["nicegui>=1.4"]
 all = [
     "torch>=2.5",
     "xgboost>=2.1",
     "shap>=0.45",
     "plotly>=5.18",
+    "nicegui>=1.4",
 ]
 dev = [
     "pytest>=8.0",
@@ -38,9 +40,11 @@ dev = [
 
 [project.scripts]
 dpoint = "dpoint.cli.main:main"
+dpoint-gui = "dpoint.gui_launcher:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["dpoint*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
