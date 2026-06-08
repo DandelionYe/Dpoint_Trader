@@ -1,6 +1,8 @@
 """数据获取模块的单元测试。"""
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -144,3 +146,52 @@ class TestFormatterEdgeCases:
         # 代码带多个点
         name = generate_csv_filename("000001.SZ.HK", "20210101")
         assert name == "000001_20210101.csv"
+
+
+class TestIndustryDB:
+    """测试行业分类数据库查询。"""
+
+    def test_list_industries_returns_list(self):
+        """list_industries 应返回行业列表。"""
+        from dpoint.data.fetch.industry import IndustryDB
+
+        db_path = r"J:\Dandelions_investment_agent\storage\reference\csmar_industry.sqlite"
+        if not Path(db_path).exists():
+            pytest.skip("CSMAR SQLite not found")
+
+        db = IndustryDB(db_path)
+        industries = db.list_industries()
+
+        assert len(industries) > 0
+        assert hasattr(industries[0], "code")
+        assert hasattr(industries[0], "name")
+        assert hasattr(industries[0], "count")
+
+    def test_get_industry_members_returns_list(self):
+        """get_industry_members 应返回股票代码列表。"""
+        from dpoint.data.fetch.industry import IndustryDB
+
+        db_path = r"J:\Dandelions_investment_agent\storage\reference\csmar_industry.sqlite"
+        if not Path(db_path).exists():
+            pytest.skip("CSMAR SQLite not found")
+
+        db = IndustryDB(db_path)
+        members = db.get_industry_members("C27")
+
+        assert len(members) > 0
+        # 所有代码应为 CODE.MARKET 格式
+        for code in members:
+            assert "." in code, f"Expected CODE.MARKET format, got: {code}"
+
+    def test_invalid_industry_code(self):
+        """无效行业代码应返回空列表。"""
+        from dpoint.data.fetch.industry import IndustryDB
+
+        db_path = r"J:\Dandelions_investment_agent\storage\reference\csmar_industry.sqlite"
+        if not Path(db_path).exists():
+            pytest.skip("CSMAR SQLite not found")
+
+        db = IndustryDB(db_path)
+        members = db.get_industry_members("ZZZZ99")
+
+        assert len(members) == 0
