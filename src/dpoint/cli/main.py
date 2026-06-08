@@ -812,19 +812,19 @@ def run_fetch_single(args) -> int:
     """获取单只股票历史数据。"""
     logger = logging.getLogger("dpoint.fetch.single")
 
+    from datetime import datetime, timedelta
+
     from dpoint.data.fetch.formatter import qmt_to_dpoint_single
     from dpoint.data.fetch.qmt_client import QMTClient
+
+    # 计算默认起始日期（6年前）
+    start = args.start or (datetime.now() - timedelta(days=365 * 6)).strftime("%Y%m%d")
+    end = args.end or datetime.now().strftime("%Y%m%d")
 
     # 确定输出路径
     if args.output:
         output_path = Path(args.output)
     else:
-        from datetime import datetime, timedelta
-        end = args.end or datetime.now().strftime("%Y%m%d")
-        if args.start:
-            start = args.start
-        else:
-            start = (datetime.now() - timedelta(days=365 * 6)).strftime("%Y%m%d")
         code_clean = args.code.replace(".", "_")
         ext = "xlsx" if args.format == "xlsx" else "csv"
         output_path = Path("data") / f"{code_clean}_{start}_{end}.{ext}"
@@ -839,7 +839,7 @@ def run_fetch_single(args) -> int:
         logger.error(str(e))
         return 1
 
-    raw_df = client.fetch_daily_history(args.code, start_date=args.start, end_date=args.end)
+    raw_df = client.fetch_daily_history(args.code, start_date=start, end_date=args.end)
     if raw_df.empty:
         logger.error("未获取到 %s 的数据", args.code)
         return 1
@@ -872,17 +872,16 @@ def run_fetch_basket(args) -> int:
 
     # 查询行业成员
     try:
-        db = IndustryDB(db_path)
+        with IndustryDB(db_path) as db:
+            members = db.get_industry_members(args.industry)
+            if not members:
+                logger.error("行业代码 '%s' 未找到任何股票", args.industry)
+                logger.info("可用行业示例:")
+                for info in db.list_industries()[:10]:
+                    logger.info("  %s %s (%d只)", info.code, info.name, info.count)
+                return 1
     except FileNotFoundError as e:
         logger.error(str(e))
-        return 1
-
-    members = db.get_industry_members(args.industry)
-    if not members:
-        logger.error("行业代码 '%s' 未找到任何股票", args.industry)
-        logger.info("可用行业示例:")
-        for info in db.list_industries()[:10]:
-            logger.info("  %s %s (%d只)", info.code, info.name, info.count)
         return 1
 
     logger.info("行业 %s 共 %d 只股票", args.industry, len(members))
@@ -901,11 +900,11 @@ def run_fetch_basket(args) -> int:
         logger.error(str(e))
         return 1
 
-    # 确定起始日期（用于文件名）
+    # 确定起始日期（用于文件名和 QMT 获取）
     from datetime import datetime, timedelta
     start = args.start or (datetime.now() - timedelta(days=365 * 6)).strftime("%Y%m%d")
 
-    data = client.fetch_batch(members, start_date=args.start, end_date=args.end)
+    data = client.fetch_batch(members, start_date=start, end_date=args.end)
 
     # 保存
     saved = 0

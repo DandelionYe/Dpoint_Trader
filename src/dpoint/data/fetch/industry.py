@@ -45,6 +45,12 @@ class IndustryDB:
         self._conn = sqlite3.connect(str(self.db_path))
         self._conn.row_factory = sqlite3.Row
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def close(self) -> None:
         """关闭数据库连接。"""
         self._conn.close()
