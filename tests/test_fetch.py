@@ -195,3 +195,49 @@ class TestIndustryDB:
         members = db.get_industry_members("ZZZZ99")
 
         assert len(members) == 0
+
+
+class TestQMTClient:
+    """测试 QMT 客户端（需要 XtMiniQMT 运行）。"""
+
+    def test_import_xtquant(self):
+        """应能导入 xtquant 库。"""
+        try:
+            from xtquant import xtdata  # noqa: F401
+        except ImportError:
+            pytest.skip("xtquant not installed (requires QMT)")
+
+    def test_fetch_single_stock(self):
+        """应能获取单只股票的历史数据。"""
+        from dpoint.data.fetch.qmt_client import QMTClient
+
+        client = QMTClient()
+        df = client.fetch_daily_history("000001.SZ", start_date="20240101", end_date="20240110")
+
+        assert not df.empty
+        assert "time" in df.columns
+        assert "open" in df.columns
+        assert "close" in df.columns
+        assert "volume" in df.columns
+
+    def test_fetch_batch(self):
+        """应能批量获取多只股票数据。"""
+        from dpoint.data.fetch.qmt_client import QMTClient
+
+        client = QMTClient()
+        codes = ["000001.SZ", "600519.SH"]
+        result = client.fetch_batch(
+            codes,
+            start_date="20240101",
+            end_date="20240110",
+        )
+
+        assert isinstance(result, dict)
+        # 至少应获取到一只股票的数据（部分股票可能未在 QMT 中订阅）
+        assert len(result) >= 1
+        # 已获取的 DataFrame 应包含基本列
+        for code, df in result.items():
+            assert code in codes
+            assert not df.empty
+            assert "open" in df.columns
+            assert "close" in df.columns
