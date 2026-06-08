@@ -15,7 +15,6 @@ import logging
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +51,15 @@ class IndustryDB:
         self.close()
 
     def close(self) -> None:
-        """关闭数据库连接。"""
-        self._conn.close()
+        """关闭数据库连接（幂等，重复调用不会报错）。"""
+        if self._conn:
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+            self._conn = None
 
-    def list_industries(self, industry_level: str = "CSMAR_ZX") -> List[IndustryInfo]:
+    def list_industries(self, industry_level: str = "CSMAR_ZX") -> list[IndustryInfo]:
         """
         列出所有行业代码、名称和成员数量。
         """
@@ -78,7 +82,7 @@ class IndustryDB:
         industry_level: str = "CSMAR_ZX",
         active_only: bool = True,
         exclude_st: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         获取指定行业的所有股票代码。
         """

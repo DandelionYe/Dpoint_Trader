@@ -839,7 +839,7 @@ def run_fetch_single(args) -> int:
         logger.error(str(e))
         return 1
 
-    raw_df = client.fetch_daily_history(args.code, start_date=start, end_date=args.end)
+    raw_df = client.fetch_daily_history(args.code, start_date=start, end_date=end)
     if raw_df.empty:
         logger.error("未获取到 %s 的数据", args.code)
         return 1
@@ -900,19 +900,28 @@ def run_fetch_basket(args) -> int:
         logger.error(str(e))
         return 1
 
-    # 确定起始日期（用于文件名和 QMT 获取）
+    # 确定日期范围（用于文件名和 QMT 获取）
     from datetime import datetime, timedelta
     start = args.start or (datetime.now() - timedelta(days=365 * 6)).strftime("%Y%m%d")
+    end = args.end or datetime.now().strftime("%Y%m%d")
 
-    data = client.fetch_batch(members, start_date=start, end_date=args.end)
+    data = client.fetch_batch(members, start_date=start, end_date=end)
 
     # 保存
+    from dpoint.data.fetch.formatter import qmt_to_dpoint_single
+
     saved = 0
     for code, raw_df in data.items():
-        df = qmt_to_dpoint_csv(raw_df)
-        filename = generate_csv_filename(code, start)
-        filepath = output_dir / filename
-        df.to_csv(filepath, index=False, encoding="utf-8-sig")
+        if args.format == "xlsx":
+            df = qmt_to_dpoint_single(raw_df)
+            code_clean = code.split(".")[0] if "." in code else code
+            filepath = output_dir / f"{code_clean}_{start}.xlsx"
+            df.to_excel(filepath, index=False, engine="openpyxl")
+        else:
+            df = qmt_to_dpoint_csv(raw_df)
+            filename = generate_csv_filename(code, start)
+            filepath = output_dir / filename
+            df.to_csv(filepath, index=False, encoding="utf-8-sig")
         saved += 1
 
     logger.info("Saved %d stocks to: %s", saved, output_dir)
@@ -938,12 +947,21 @@ def main(argv=None) -> int:
         return run_resume(args)
     elif args.command == "fetch":
         if not args.fetch_mode:
-            parser.parse_args(["fetch", "--help"])
+            # 找到 fetch 子解析器并打印帮助
+            for action in parser._subparsers._actions:
+                if isinstance(action, argparse._SubParsersAction):
+                    fetch_parser = action.choices.get("fetch")
+                    if fetch_parser:
+                        fetch_parser.print_help()
+                        break
             return 1
         if args.fetch_mode == "single":
             return run_fetch_single(args)
         elif args.fetch_mode == "basket":
             return run_fetch_basket(args)
+        else:
+            logger.error("未知的 fetch 模式: %s", args.fetch_mode)
+            return 1
 
     return 0
 

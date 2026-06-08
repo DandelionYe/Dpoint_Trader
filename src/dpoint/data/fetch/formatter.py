@@ -13,12 +13,35 @@ Dpoint_Trader 篮子 CSV 格式:
 """
 from __future__ import annotations
 
+import logging
 import sys
 
 import pandas as pd
 
+from dpoint.core.constants import (
+    COL_AMOUNT,
+    COL_CLOSE,
+    COL_DATE,
+    COL_HIGH,
+    COL_LOW,
+    COL_OPEN,
+    COL_VOLUME,
+    DEFAULT_COLUMN_MAP,
+)
+
+logger = logging.getLogger(__name__)
+
+# QMT 返回的必需列
+_QMT_REQUIRED = ["time", "open", "high", "low", "close", "volume"]
+
 # Windows strftime 不支持 %-m/%-d，需用 %#m/%#d
 _DATE_FMT = "%Y/%#m/%#d" if sys.platform == "win32" else "%Y/%-m/%-d"
+
+# 内部标准列名（来自 constants.py）
+_INTERNAL_COLS = [COL_DATE, COL_OPEN, COL_HIGH, COL_LOW, COL_CLOSE, COL_VOLUME, COL_AMOUNT]
+
+# 外部 CSV 列名（来自 DEFAULT_COLUMN_MAP 的 keys）
+_CSV_COLS = list(DEFAULT_COLUMN_MAP.keys())
 
 
 def qmt_to_dpoint_single(df: pd.DataFrame) -> pd.DataFrame:
@@ -31,28 +54,32 @@ def qmt_to_dpoint_single(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Dpoint_Trader 格式 DataFrame，列为 date/open_qfq/high_qfq/low_qfq/close_qfq/volume/amount
     """
-    _REQUIRED = ["time", "open", "high", "low", "close", "volume"]
-    missing = set(_REQUIRED) - set(df.columns)
+    missing = set(_QMT_REQUIRED) - set(df.columns)
     if missing:
         raise ValueError(f"缺少必需列: {missing}")
 
     if df.empty:
-        return pd.DataFrame(
-            columns=["date", "open_qfq", "high_qfq", "low_qfq", "close_qfq", "volume", "amount"]
-        )
+        return pd.DataFrame(columns=_INTERNAL_COLS)
 
-    result = pd.DataFrame()
-    result["date"] = pd.to_datetime(df["time"], unit="ms", errors="coerce")
-    result["open_qfq"] = df["open"].values
-    result["high_qfq"] = df["high"].values
-    result["low_qfq"] = df["low"].values
-    result["close_qfq"] = df["close"].values
-    result["volume"] = df["volume"].values
-    if "amount" in df.columns:
-        result["amount"] = df["amount"].values
+    dates = pd.to_datetime(df["time"], unit="ms", errors="coerce")
 
-    # 按日期排序
-    result = result.sort_values("date").reset_index(drop=True)
+    # 检查并记录无效时间戳
+    nat_count = dates.isna().sum()
+    if nat_count > 0:
+        logger.warning("发现 %d 个无效时间戳（已转为 NaT）", nat_count)
+
+    result = pd.DataFrame({
+        COL_DATE: dates,
+        COL_OPEN: df["open"].values,
+        COL_HIGH: df["high"].values,
+        COL_LOW: df["low"].values,
+        COL_CLOSE: df["close"].values,
+        COL_VOLUME: df["volume"].values,
+        COL_AMOUNT: df["amount"].values if "amount" in df.columns else 0.0,
+    })
+
+    # 按日期排序，NaT 排到末尾
+    result = result.sort_values(COL_DATE).reset_index(drop=True)
     return result
 
 
@@ -69,32 +96,32 @@ def qmt_to_dpoint_csv(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         篮子 CSV 格式 DataFrame
     """
-    _REQUIRED = ["time", "open", "high", "low", "close", "volume"]
-    missing = set(_REQUIRED) - set(df.columns)
+    missing = set(_QMT_REQUIRED) - set(df.columns)
     if missing:
         raise ValueError(f"缺少必需列: {missing}")
 
     if df.empty:
-        return pd.DataFrame(
-            columns=[
-                "Date",
-                "Open (CNY, qfq)",
-                "High (CNY, qfq)",
-                "Low (CNY, qfq)",
-                "Close (CNY, qfq)",
-                "Volume (shares)",
-            ]
-        )
+        return pd.DataFrame(columns=_CSV_COLS)
 
     dates = pd.to_datetime(df["time"], unit="ms", errors="coerce")
 
-    result = pd.DataFrame()
-    result["Date"] = dates.dt.strftime(_DATE_FMT)
-    result["Open (CNY, qfq)"] = df["open"].values
-    result["High (CNY, qfq)"] = df["high"].values
-    result["Low (CNY, qfq)"] = df["low"].values
-    result["Close (CNY, qfq)"] = df["close"].values
-    result["Volume (shares)"] = df["volume"].values
+    # 检查并记录无效时间戳
+    nat_count = dates.isna().sum()
+    if nat_count > 0:
+        logger.warning("发现 %d 个无效时间戳（已转为 NaT）", nat_count)
+
+    # NaT 的 strftime 会产生 NaN，用空字符串替换
+    date_strs = dates.dt.strftime(_DATE_FMT)
+    date_strs = date_strs.fillna("")
+
+    result = pd.DataFrame({
+        "Date": date_strs,
+        "Open (CNY, qfq)": df["open"].values,
+        "High (CNY, qfq)": df["high"].values,
+        "Low (CNY, qfq)": df["low"].values,
+        "Close (CNY, qfq)": df["close"].values,
+        "Volume (shares)": df["volume"].values,
+    })
 
     return result
 

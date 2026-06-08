@@ -159,13 +159,13 @@ class TestIndustryDB:
         if not Path(db_path).exists():
             pytest.skip("CSMAR SQLite not found")
 
-        db = IndustryDB(db_path)
-        industries = db.list_industries()
+        with IndustryDB(db_path) as db:
+            industries = db.list_industries()
 
-        assert len(industries) > 0
-        assert hasattr(industries[0], "code")
-        assert hasattr(industries[0], "name")
-        assert hasattr(industries[0], "count")
+            assert len(industries) > 0
+            assert hasattr(industries[0], "code")
+            assert hasattr(industries[0], "name")
+            assert hasattr(industries[0], "count")
 
     def test_get_industry_members_returns_list(self):
         """get_industry_members 应返回股票代码列表。"""
@@ -175,13 +175,13 @@ class TestIndustryDB:
         if not Path(db_path).exists():
             pytest.skip("CSMAR SQLite not found")
 
-        db = IndustryDB(db_path)
-        members = db.get_industry_members("C27")
+        with IndustryDB(db_path) as db:
+            members = db.get_industry_members("C27")
 
-        assert len(members) > 0
-        # 所有代码应为 CODE.MARKET 格式
-        for code in members:
-            assert "." in code, f"Expected CODE.MARKET format, got: {code}"
+            assert len(members) > 0
+            # 所有代码应为 CODE.MARKET 格式
+            for code in members:
+                assert "." in code, f"Expected CODE.MARKET format, got: {code}"
 
     def test_invalid_industry_code(self):
         """无效行业代码应返回空列表。"""
@@ -191,10 +191,10 @@ class TestIndustryDB:
         if not Path(db_path).exists():
             pytest.skip("CSMAR SQLite not found")
 
-        db = IndustryDB(db_path)
-        members = db.get_industry_members("ZZZZ99")
+        with IndustryDB(db_path) as db:
+            members = db.get_industry_members("ZZZZ99")
 
-        assert len(members) == 0
+            assert len(members) == 0
 
 
 class TestQMTClient:

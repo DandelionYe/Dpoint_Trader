@@ -11,7 +11,6 @@ QMT 数据获取客户端。
 from __future__ import annotations
 
 import logging
-from typing import Dict, List
 
 import pandas as pd
 
@@ -73,15 +72,24 @@ class QMTClient:
         )
 
         # Step 1: 下载到本地缓存
-        try:
-            self._xtdata.download_history_data(
-                stock_code=stock_code,
-                period=period,
-                start_time=start_date,
-                end_time=end_date,
-            )
-        except TypeError:
-            # 兼容不同版本的 xtquant：部分版本不支持 keyword-only 参数
+        # 兼容不同版本的 xtquant：部分版本不支持 keyword-only 参数
+        # 先尝试关键字参数，失败则回退到位置参数
+        if not hasattr(self, "_download_kw_supported"):
+            self._download_kw_supported = True  # 乐观假设，首次失败后切换
+
+        if self._download_kw_supported:
+            try:
+                self._xtdata.download_history_data(
+                    stock_code=stock_code,
+                    period=period,
+                    start_time=start_date,
+                    end_time=end_date,
+                )
+            except TypeError:
+                # 关键字参数不支持，切换到位置参数模式
+                self._download_kw_supported = False
+                self._xtdata.download_history_data(stock_code, period, start_date, end_date)
+        else:
             self._xtdata.download_history_data(stock_code, period, start_date, end_date)
 
         # Step 2: 从缓存读取
@@ -102,8 +110,10 @@ class QMTClient:
 
         df = data[stock_code].copy()
 
-        # 标准化列名（xtquant 可能返回混合大小写）
+        # 标准化列名和索引名（xtquant 可能返回混合大小写）
         df.columns = [str(c).lower() for c in df.columns]
+        if df.index.name:
+            df.index.name = str(df.index.name).lower()
 
         # 确保 time 列存在
         if "time" not in df.columns and df.index.name in ("time", "timetag"):
@@ -114,12 +124,12 @@ class QMTClient:
 
     def fetch_batch(
         self,
-        stock_codes: List[str],
+        stock_codes: list[str],
         period: str = "1d",
         start_date: str = "",
         end_date: str = "",
         dividend_type: str = "front",
-    ) -> Dict[str, pd.DataFrame]:
+    ) -> dict[str, pd.DataFrame]:
         """
         批量获取多只股票的历史数据。
 
@@ -135,7 +145,7 @@ class QMTClient:
         """
         logger.info("Batch fetching %d stocks", len(stock_codes))
 
-        result: Dict[str, pd.DataFrame] = {}
+        result: dict[str, pd.DataFrame] = {}
         for i, code in enumerate(stock_codes, 1):
             logger.info("[%d/%d] Fetching %s", i, len(stock_codes), code)
             try:
@@ -144,7 +154,7 @@ class QMTClient:
                     result[code] = df
                 else:
                     logger.warning("Empty data for %s, skipping", code)
-            except Exception as e:
+            except (OSError, RuntimeError, KeyError, ValueError) as e:
                 logger.error("Failed to fetch %s: %s", code, e)
 
         logger.info("Batch complete: %d/%d succeeded", len(result), len(stock_codes))
