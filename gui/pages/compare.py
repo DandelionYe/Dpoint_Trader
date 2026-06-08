@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -14,6 +15,17 @@ from nicegui import ui
 from gui.components.layout import create_page_layout
 from gui.components.charts import comparison_equity_chart
 from gui.state import app_state
+
+logger = logging.getLogger(__name__)
+
+
+def _validate_path(path_str: str) -> Path | None:
+    """校验路径，防止路径穿越。"""
+    output_dir = Path(app_state.output_dir).resolve()
+    target = Path(path_str).resolve()
+    if not str(target).startswith(str(output_dir)):
+        return None
+    return target
 
 
 def _list_experiments_for_compare(output_dir: Path) -> list[dict]:
@@ -43,17 +55,20 @@ def _list_experiments_for_compare(output_dir: Path) -> list[dict]:
 
 
 def _load_risk_metrics(exp_path: str) -> dict:
-    """加载单个实验的风险指标。"""
+    """加载单个实验的风险指标。RiskMetrics 是列方向：指标名为列头，一行为值。"""
     report_path = Path(exp_path) / "report.xlsx"
     metrics = {}
     if report_path.exists():
         try:
             df = pd.read_excel(report_path, sheet_name="RiskMetrics")
-            for _, row in df.iterrows():
-                if len(row) >= 2:
-                    metrics[str(row.iloc[0])] = str(row.iloc[1])
-        except Exception:
+            if not df.empty:
+                row = df.iloc[0]
+                for col_name in df.columns:
+                    metrics[str(col_name)] = str(row[col_name])
+        except ValueError:
             pass
+        except Exception as e:
+            logger.warning("读取 RiskMetrics 失败: %s", e)
     return metrics
 
 
@@ -103,56 +118,73 @@ def compare_page():
             value=[],
         ).classes("w-full")
 
+        # 对比结果容器
+        result_container = ui.column().classes("w-full gap-4")
+
         async def on_compare():
             paths = selected.value
             if not paths or len(paths) < 2:
                 ui.notify("请至少选择 2 个实验", type="warning")
                 return
 
+            # 校验路径
+            for p in paths:
+                if _validate_path(p) is None:
+                    ui.notify(f"非法路径: {p}", type="negative")
+                    return
+
+            # 清空之前的结果
+            result_container.clear()
+
             # 加载数据
             all_metrics = {}
             all_curves = {}
+            all_dates = {}
             for path in paths:
                 name = Path(path).name
                 metrics = _load_risk_metrics(path)
                 all_metrics[name] = metrics
                 dates, equity = _load_equity_curve(path)
                 if dates:
+                    all_dates[name] = dates
                     all_curves[name] = equity
 
-            # 对比表格
-            if all_metrics:
-                ui.label("风险指标对比").classes("text-h6 q-mt-md")
-                # 收集所有指标名
-                all_keys = set()
-                for m in all_metrics.values():
-                    all_keys.update(m.keys())
+            with result_container:
+                # 对比表格
+                if all_metrics:
+                    ui.label("风险指标对比").classes("text-h6")
+                    all_keys = set()
+                    for m in all_metrics.values():
+                        all_keys.update(m.keys())
 
-                columns = [{"name": "metric", "label": "指标", "field": "metric", "align": "left"}]
-                for name in all_metrics:
-                    columns.append(
-                        {"name": name, "label": name, "field": name, "align": "center"}
-                    )
+                    columns = [{"name": "metric", "label": "指标", "field": "metric", "align": "left"}]
+                    for name in all_metrics:
+                        columns.append(
+                            {"name": name, "label": name, "field": name, "align": "center"}
+                        )
 
-                rows = []
-                for key in sorted(all_keys):
-                    row = {"metric": key}
-                    for name, m in all_metrics.items():
-                        row[name] = m.get(key, "-")
-                    rows.append(row)
+                    rows = []
+                    for key in sorted(all_keys):
+                        row = {"metric": key}
+                        for name, m in all_metrics.items():
+                            row[name] = m.get(key, "-")
+                        rows.append(row)
 
-                ui.table(columns=columns, rows=rows, row_key="metric").classes("w-full")
+                    ui.table(columns=columns, rows=rows, row_key="metric").classes("w-full")
 
-            # 权益曲线叠加
-            if all_curves:
-                ui.label("权益曲线叠加").classes("text-h6 q-mt-md")
-                # 使用最长的日期序列
-                longest_dates = max(all_curves.values(), key=len) if all_curves else []
-                # 对齐日期（简化：使用第一个实验的日期）
-                first_path = paths[0]
-                dates, _ = _load_equity_curve(first_path)
-                if dates:
-                    comparison_equity_chart(dates, all_curves)
+                # 权益曲线叠加 — 使用所有实验日期的并集，对齐数据
+                if all_curves:
+                    ui.label("权益曲线叠加").classes("text-h6")
+                    # 收集所有日期的并集并排序
+                    all_dates_union = sorted(set(d for dates in all_dates.values() for d in dates))
+                    # 对齐每个曲线到并集日期
+                    aligned_curves = {}
+                    for name, dates in all_dates.items():
+                        date_to_val = dict(zip(dates, all_curves[name]))
+                        aligned = [date_to_val.get(d, None) for d in all_dates_union]
+                        # 去掉前导 None（用第一个有效值之前的 None）
+                        aligned_curves[name] = aligned
+                    comparison_equity_chart(all_dates_union, aligned_curves)
 
         ui.button(
             "📊 开始对比",

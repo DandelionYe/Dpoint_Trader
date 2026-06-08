@@ -84,7 +84,7 @@ async def stream_subprocess_output(
 
         return returncode
 
-    except Exception as e:
+    except (OSError, asyncio.CancelledError) as e:
         if status_label:
             status_label.text = f"错误: {e}"
             status_label.classes(replace="text-caption text-negative")

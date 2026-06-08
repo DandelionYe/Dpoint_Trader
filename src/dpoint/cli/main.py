@@ -51,6 +51,8 @@ def build_parser() -> argparse.ArgumentParser:
     single.add_argument("--holdout_ratio", type=float, default=0.15, help="Holdout 比例")
     single.add_argument("--model_types", nargs="+", default=None,
                         help="搜索的模型类型列表（默认全部）")
+    single.add_argument("--config", default=None,
+                        help="JSON 配置文件路径（提供后忽略其他参数，直接使用文件中的完整配置）")
 
     # === dpoint basket ===
     basket = subparsers.add_parser("basket", help="篮子/组合策略模式")
@@ -72,6 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
     basket.add_argument("--calendar_align", default="none",
                         choices=["none", "inner", "outer", "majority"], help="日历对齐")
     basket.add_argument("--model_types", nargs="+", default=None, help="搜索的模型类型列表")
+    basket.add_argument("--config", default=None, help="JSON 配置文件路径")
 
     # === dpoint resume ===
     resume = subparsers.add_parser("resume", help="从上次搜索结果继续迭代搜索")
@@ -85,6 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("--output", default="output", help="输出目录")
     resume.add_argument("--device", default="auto", help="设备 (auto/cpu/cuda)")
     resume.add_argument("--model_types", nargs="+", default=None, help="搜索的模型类型列表")
+    resume.add_argument("--config", default=None, help="JSON 配置文件路径")
 
     return parser
 
@@ -103,16 +107,21 @@ def run_single(args) -> int:
     logger = logging.getLogger("dpoint.single")
 
     # 1. 构建配置
-    config = RunConfig(
-        mode="single",
-        data_path=args.data_path,
-        output_dir=args.output,
-        seed=args.seed,
-        device=args.device,
-        model=ModelConfig(model_type=args.model),
-        search=SearchConfig(n_candidates=args.runs, n_rounds=args.n_rounds, metric=args.metric, seed=args.seed),
-        split=SplitConfig(n_folds=args.n_folds, holdout_ratio=args.holdout_ratio),
-    )
+    if args.config:
+        logger.info("Loading config from: %s", args.config)
+        config = RunConfig.from_dict(json.loads(Path(args.config).read_text(encoding="utf-8")))
+        config.mode = "single"
+    else:
+        config = RunConfig(
+            mode="single",
+            data_path=args.data_path,
+            output_dir=args.output,
+            seed=args.seed,
+            device=args.device,
+            model=ModelConfig(model_type=args.model),
+            search=SearchConfig(n_candidates=args.runs, n_rounds=args.n_rounds, metric=args.metric, seed=args.seed),
+            split=SplitConfig(n_folds=args.n_folds, holdout_ratio=args.holdout_ratio),
+        )
 
     set_global_seed(config.seed)
 
@@ -278,17 +287,22 @@ def run_basket(args) -> int:
     logger = logging.getLogger("dpoint.basket")
 
     # 1. 构建配置
-    config = RunConfig(
-        mode="basket",
-        basket_path=args.basket_path,
-        output_dir=args.output,
-        seed=args.seed,
-        device=args.device,
-        model=ModelConfig(model_type=args.model),
-        search=SearchConfig(n_candidates=args.runs, n_rounds=args.n_rounds, metric=args.metric, seed=args.seed),
-        split=SplitConfig(n_folds=args.n_folds, holdout_ratio=args.holdout_ratio),
-        portfolio=PortfolioConfig(top_k=args.top_k, weighting=args.weighting, rebalance_freq=args.rebalance),
-    )
+    if args.config:
+        logger.info("Loading config from: %s", args.config)
+        config = RunConfig.from_dict(json.loads(Path(args.config).read_text(encoding="utf-8")))
+        config.mode = "basket"
+    else:
+        config = RunConfig(
+            mode="basket",
+            basket_path=args.basket_path,
+            output_dir=args.output,
+            seed=args.seed,
+            device=args.device,
+            model=ModelConfig(model_type=args.model),
+            search=SearchConfig(n_candidates=args.runs, n_rounds=args.n_rounds, metric=args.metric, seed=args.seed),
+            split=SplitConfig(n_folds=args.n_folds, holdout_ratio=args.holdout_ratio),
+            portfolio=PortfolioConfig(top_k=args.top_k, weighting=args.weighting, rebalance_freq=args.rebalance),
+        )
 
     set_global_seed(config.seed)
 

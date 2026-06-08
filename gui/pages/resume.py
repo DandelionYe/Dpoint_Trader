@@ -16,6 +16,16 @@ from gui.components.log_panel import create_log_panel, stream_subprocess_output
 from gui.state import app_state
 
 
+def _safe_int(value, default: int | None = None) -> int | None:
+    """安全地将 widget value 转为 int，处理 None 和空字符串。"""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _list_experiments(output_dir: Path) -> list[dict]:
     """列出已有实验。"""
     experiments = []
@@ -108,37 +118,51 @@ def resume_page():
                     value="auto",
                 )
 
-        # 运行
+        # 运行按钮和状态
+        run_button = ui.button(
+            "▶ 恢复搜索",
+            color="orange",
+            icon="play_arrow",
+        ).classes("text-white")
+        is_running = {"value": False}
+
         async def on_run():
+            if is_running["value"]:
+                ui.notify("已有实验正在运行，请等待完成", type="warning")
+                return
             if not selected_exp.value:
                 ui.notify("请选择一个实验", type="warning")
                 return
 
-            cmd = [sys.executable, "-m", "dpoint.cli.main", "resume"]
-            cmd += [selected_exp.value]
-            cmd += ["--runs", str(int(runs.value))]
-            cmd += ["--n_rounds", str(int(n_rounds.value))]
-            if metric.value:
-                cmd += ["--metric", metric.value]
-            if seed.value is not None:
-                cmd += ["--seed", str(int(seed.value))]
-            cmd += ["--output", output.value or "output"]
-            cmd += ["--device", device.value]
+            is_running["value"] = True
+            run_button.disable()
 
-            log, status_label, progress = create_log_panel("恢复搜索")
-            ui.notify("开始恢复搜索...", type="info")
+            try:
+                cmd = [sys.executable, "-m", "dpoint.cli.main", "resume"]
+                cmd += [selected_exp.value]
+                runs_val = _safe_int(runs.value, 100)
+                cmd += ["--runs", str(runs_val)]
+                n_rounds_val = _safe_int(n_rounds.value, 4)
+                cmd += ["--n_rounds", str(n_rounds_val)]
+                if metric.value:
+                    cmd += ["--metric", metric.value]
+                seed_val = _safe_int(seed.value, None)
+                if seed_val is not None:
+                    cmd += ["--seed", str(seed_val)]
+                cmd += ["--output", output.value or "output"]
+                cmd += ["--device", device.value]
 
-            returncode = await stream_subprocess_output(cmd, log, status_label, progress)
+                log, status_label, progress = create_log_panel("恢复搜索")
+                ui.notify("开始恢复搜索...", type="info")
 
-            if returncode == 0:
-                ui.notify("恢复搜索完成！", type="positive")
-            else:
-                ui.notify(f"运行失败，退出码: {returncode}", type="negative")
+                returncode = await stream_subprocess_output(cmd, log, status_label, progress)
 
-        with ui.row().classes("gap-4 q-mt-md"):
-            ui.button(
-                "▶ 恢复搜索",
-                on_click=on_run,
-                color="orange",
-                icon="play_arrow",
-            ).classes("text-white")
+                if returncode == 0:
+                    ui.notify("恢复搜索完成！", type="positive")
+                else:
+                    ui.notify(f"运行失败，退出码: {returncode}", type="negative")
+            finally:
+                is_running["value"] = False
+                run_button.enable()
+
+        run_button.on_click(on_run)

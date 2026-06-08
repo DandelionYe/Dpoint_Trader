@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from nicegui import ui
+from nicegui import ui, app
 
 
 def create_page_layout() -> None:
@@ -18,8 +18,17 @@ def create_page_layout() -> None:
     with ui.header().classes("bg-blue-900"):
         ui.label("Dpoint Trader 量化研究平台").classes("text-h6 text-white")
         ui.space()
-        dark = ui.dark_mode()
-        ui.button(on_click=dark.toggle, icon="dark_mode").props("flat color=white")
+
+        # 暗色模式切换 — 使用 client storage 持久化偏好
+        storage = app.storage.user
+        is_dark = storage.get("dark_mode", False)
+        dark = ui.dark_mode(value=is_dark)
+
+        def toggle_dark():
+            dark.toggle()
+            storage["dark_mode"] = dark.value
+
+        ui.button(on_click=toggle_dark, icon="dark_mode").props("flat color=white")
 
     # 左侧导航抽屉
     with ui.left_drawer(value=True).classes("bg-grey-2"):

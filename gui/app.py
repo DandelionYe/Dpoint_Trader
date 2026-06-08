@@ -33,7 +33,7 @@ from gui.pages import compare  # noqa: F401
 
 def main():
     parser = argparse.ArgumentParser(description="Dpoint Trader 量化研究平台 GUI")
-    parser.add_argument("--host", default="0.0.0.0", help="监听地址 (默认: 0.0.0.0)")
+    parser.add_argument("--host", default="127.0.0.1", help="监听地址 (默认: 127.0.0.1，仅本机访问)")
     parser.add_argument("--port", type=int, default=8080, help="端口 (默认: 8080)")
     parser.add_argument("--native", action="store_true", help="桌面窗口模式")
     parser.add_argument("--dark", action="store_true", help="暗色模式")

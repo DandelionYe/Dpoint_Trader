@@ -28,8 +28,6 @@ class AppState:
 
     output_dir: str = "output"
     running_tasks: dict[str, RunningTask] = field(default_factory=dict)
-    experiments_cache: list[dict] = field(default_factory=list)
-    experiments_cache_time: float = 0.0
 
     def get_output_path(self) -> Path:
         return Path(self.output_dir)

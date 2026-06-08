@@ -5,7 +5,9 @@
 
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 
 from nicegui import ui
 
@@ -17,9 +19,28 @@ from gui.components.config_forms import (
     search_config_form,
     split_config_form,
     portfolio_config_form,
+    collect_form_values,
 )
 from gui.components.log_panel import create_log_panel, stream_subprocess_output
 from gui.state import app_state
+
+
+def _safe_int(value, default: int) -> int:
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_float(value, default: float) -> float:
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 @ui.page("/run/basket")
@@ -81,42 +102,73 @@ def run_basket_page():
                 trade_widgets = trade_config_form()
                 split_widgets = split_config_form()
 
-        # ---- 运行按钮 ----
+        # ---- 运行按钮和状态 ----
+        run_button = ui.button(
+            "▶ 开始运行",
+            color="green",
+            icon="play_arrow",
+        ).classes("text-white")
+        is_running = {"value": False}
+
         async def on_run():
-            if not basket_path.value:
+            if is_running["value"]:
+                ui.notify("已有实验正在运行，请等待完成", type="warning")
+                return
+            if not basket_path.value or not basket_path.value.strip():
                 ui.notify("请填写篮子数据目录", type="warning")
                 return
 
-            cmd = [sys.executable, "-m", "dpoint.cli.main", "basket"]
-            cmd += ["--basket_path", basket_path.value]
-            cmd += ["--model", model_widgets["model_type"].value]
-            cmd += ["--runs", str(int(search_widgets["n_candidates"].value))]
-            cmd += ["--n_rounds", str(int(search_widgets["n_rounds"].value))]
-            cmd += ["--metric", search_widgets["metric"].value]
-            cmd += ["--seed", str(int(search_widgets["seed"].value))]
-            cmd += ["--output", output_dir.value or "output"]
-            cmd += ["--device", device.value]
-            cmd += ["--n_folds", str(int(split_widgets["n_folds"].value))]
-            cmd += ["--holdout_ratio", str(split_widgets["holdout_ratio"].value)]
-            cmd += ["--top_k", str(int(portfolio_widgets["top_k"].value))]
-            cmd += ["--rebalance", portfolio_widgets["rebalance_freq"].value]
-            cmd += ["--weighting", portfolio_widgets["weighting"].value]
-            cmd += ["--calendar_align", calendar_align.value]
+            is_running["value"] = True
+            run_button.disable()
 
-            log, status_label, progress = create_log_panel("篮子策略")
-            ui.notify("开始运行篮子策略...", type="info")
+            try:
+                feat_vals = collect_form_values(feature_widgets)
+                model_vals = collect_form_values(model_widgets)
+                trade_vals = collect_form_values(trade_widgets)
+                search_vals = collect_form_values(search_widgets)
+                split_vals = collect_form_values(split_widgets)
+                portfolio_vals = collect_form_values(portfolio_widgets)
 
-            returncode = await stream_subprocess_output(cmd, log, status_label, progress)
+                config_dict = {
+                    "mode": "basket",
+                    "basket_path": basket_path.value.strip(),
+                    "output_dir": output_dir.value or "output",
+                    "seed": _safe_int(search_vals.get("seed"), 42),
+                    "device": device.value,
+                    "feature": feat_vals,
+                    "model": model_vals,
+                    "trade": trade_vals,
+                    "search": {
+                        "n_candidates": _safe_int(search_vals.get("n_candidates"), 100),
+                        "n_rounds": _safe_int(search_vals.get("n_rounds"), 4),
+                        "metric": search_vals.get("metric", "rank_ic"),
+                        "seed": _safe_int(search_vals.get("seed"), 42),
+                    },
+                    "split": split_vals,
+                    "portfolio": portfolio_vals,
+                }
 
-            if returncode == 0:
-                ui.notify("篮子策略运行完成！", type="positive")
-            else:
-                ui.notify(f"运行失败，退出码: {returncode}", type="negative")
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".json", delete=False, encoding="utf-8"
+                ) as f:
+                    json.dump(config_dict, f, ensure_ascii=False, indent=2)
+                    config_path = f.name
 
-        with ui.row().classes("gap-4 q-mt-md"):
-            ui.button(
-                "▶ 开始运行",
-                on_click=on_run,
-                color="green",
-                icon="play_arrow",
-            ).classes("text-white")
+                cmd = [sys.executable, "-m", "dpoint.cli.main", "basket"]
+                cmd += ["--basket_path", basket_path.value.strip()]
+                cmd += ["--config", config_path]
+
+                log, status_label, progress = create_log_panel("篮子策略")
+                ui.notify("开始运行篮子策略...", type="info")
+
+                returncode = await stream_subprocess_output(cmd, log, status_label, progress)
+
+                if returncode == 0:
+                    ui.notify("篮子策略运行完成！", type="positive")
+                else:
+                    ui.notify(f"运行失败，退出码: {returncode}", type="negative")
+            finally:
+                is_running["value"] = False
+                run_button.enable()
+
+        run_button.on_click(on_run)

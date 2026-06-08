@@ -66,7 +66,6 @@ def dashboard_page():
         # 统计卡片
         output_dir = Path(app_state.output_dir)
         experiments = _find_experiments(output_dir)
-        app_state.experiments_cache = experiments
 
         with ui.row().classes("gap-4"):
             with ui.card().classes("flex-1"):

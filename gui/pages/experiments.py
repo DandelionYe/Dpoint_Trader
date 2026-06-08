@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,8 @@ from nicegui import ui
 
 from gui.components.layout import create_page_layout
 from gui.state import app_state
+
+logger = logging.getLogger(__name__)
 
 
 def _scan_experiments(output_dir: Path) -> list[dict]:
@@ -26,15 +29,16 @@ def _scan_experiments(output_dir: Path) -> list[dict]:
         if not exp_dir.is_dir():
             continue
 
+        # 使用 st_mtime 作为创建时间（st_ctime 在 Linux 上是 inode 变更时间）
+        stat = exp_dir.stat()
+        ts = stat.st_mtime
         info = {
             "name": exp_dir.name,
             "path": str(exp_dir),
             "mode": "unknown",
             "model_type": "unknown",
             "seed": "?",
-            "created": datetime.fromtimestamp(exp_dir.stat().st_ctime).strftime(
-                "%Y-%m-%d %H:%M"
-            ),
+            "created": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M"),
             "has_report": (exp_dir / "report.xlsx").exists(),
             "has_state": (exp_dir / "search_state.json").exists(),
         }
@@ -165,6 +169,8 @@ def experiments_page():
             if mode != "all":
                 filtered = [r for r in filtered if r["mode"] == mode]
             table.rows = filtered
+            # 清除选中状态，防止筛选后误删不可见的实验
+            table.selected = []
 
         search_input.on("change", apply_filter)
         mode_filter.on("change", apply_filter)
@@ -183,12 +189,31 @@ def experiments_page():
                 return
 
             names = [s["name"] for s in selected]
+            # 确认对话框
+            confirmed = await ui.dialog(
+                f"确定要删除以下 {len(names)} 个实验吗？此操作不可撤销。\n" + "\n".join(names)
+            ).add_button("取消", value=False).add_button("确定删除", value=True)
+
+            if not confirmed:
+                return
+
+            success_count = 0
+            fail_count = 0
             for s in selected:
                 try:
                     shutil.rmtree(s["path"])
-                except Exception:
-                    pass
-            ui.notify(f"已删除 {len(names)} 个实验", type="positive")
+                    success_count += 1
+                except Exception as e:
+                    fail_count += 1
+                    logger.error("删除实验 %s 失败: %s", s["name"], e)
+
+            if fail_count > 0:
+                ui.notify(
+                    f"删除完成：成功 {success_count} 个，失败 {fail_count} 个",
+                    type="warning",
+                )
+            else:
+                ui.notify(f"已删除 {success_count} 个实验", type="positive")
             ui.navigate.to("/experiments")
 
         with ui.row().classes("gap-4 q-mt-sm"):

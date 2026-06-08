@@ -6,20 +6,33 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import pandas as pd
 from nicegui import ui
 
 from gui.components.layout import create_page_layout
-from gui.components.charts import equity_curve_chart, drawdown_chart, ic_bar_chart
+from gui.components.charts import equity_curve_chart, drawdown_chart
 from gui.state import app_state
+
+logger = logging.getLogger(__name__)
+
+
+def _validate_exp_name(exp_name: str) -> Path | None:
+    """校验实验名，防止路径穿越。返回合法的实验目录路径或 None。"""
+    output_dir = Path(app_state.output_dir).resolve()
+    exp_dir = (output_dir / exp_name).resolve()
+    # 确保解析后的路径仍在 output_dir 下
+    if not str(exp_dir).startswith(str(output_dir)):
+        return None
+    return exp_dir
 
 
 def _load_experiment(exp_name: str) -> dict | None:
     """加载实验数据。"""
-    exp_dir = Path(app_state.output_dir) / exp_name
-    if not exp_dir.exists():
+    exp_dir = _validate_exp_name(exp_name)
+    if exp_dir is None or not exp_dir.exists():
         return None
 
     data = {"name": exp_name, "path": str(exp_dir)}
@@ -29,36 +42,33 @@ def _load_experiment(exp_name: str) -> dict | None:
     if manifest_path.exists():
         try:
             data["manifest"] = json.loads(manifest_path.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("读取 manifest.json 失败: %s", e)
 
     # 读取 config
     config_path = exp_dir / "config.json"
     if config_path.exists():
         try:
             data["config"] = json.loads(config_path.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("读取 config.json 失败: %s", e)
 
     # 读取 Excel 报告
     report_path = exp_dir / "report.xlsx"
     if report_path.exists():
-        try:
-            data["equity_df"] = pd.read_excel(report_path, sheet_name="EquityCurve")
-        except Exception:
-            pass
-        try:
-            data["risk_df"] = pd.read_excel(report_path, sheet_name="RiskMetrics")
-        except Exception:
-            pass
-        try:
-            data["trades_df"] = pd.read_excel(report_path, sheet_name="Trades")
-        except Exception:
-            pass
-        try:
-            data["search_df"] = pd.read_excel(report_path, sheet_name="SearchLog")
-        except Exception:
-            pass
+        for sheet_name, key in [
+            ("EquityCurve", "equity_df"),
+            ("RiskMetrics", "risk_df"),
+            ("Trades", "trades_df"),
+            ("SearchLog", "search_df"),
+        ]:
+            try:
+                data[key] = pd.read_excel(report_path, sheet_name=sheet_name)
+            except ValueError:
+                # 工作表不存在，正常跳过
+                pass
+            except Exception as e:
+                logger.warning("读取 %s 的 %s 工作表失败: %s", report_path, sheet_name, e)
 
     return data
 
@@ -98,12 +108,12 @@ def results_page(exp_name: str):
                 ui.label("风险指标").classes("text-h6")
                 ui.separator()
                 with ui.row().classes("gap-4 flex-wrap"):
-                    for _, row in risk_df.iterrows():
-                        metric_name = str(row.iloc[0]) if len(row) > 0 else ""
-                        metric_val = str(row.iloc[1]) if len(row) > 1 else ""
+                    # RiskMetrics 是列方向：指标名为列头，一行为值
+                    row = risk_df.iloc[0]
+                    for col_name in risk_df.columns:
                         with ui.card().classes("flex-1 min-w-[120px]"):
-                            ui.label(metric_name).classes("text-caption text-grey-6")
-                            ui.label(metric_val).classes("text-h6")
+                            ui.label(str(col_name)).classes("text-caption text-grey-6")
+                            ui.label(str(row[col_name])).classes("text-h6")
 
         # ---- 图表 Tabs ----
         equity_df = data.get("equity_df")
@@ -119,7 +129,6 @@ def results_page(exp_name: str):
             # 权益曲线
             with ui.tab_panel(tab_equity):
                 if equity_df is not None and not equity_df.empty:
-                    # 尝试找到日期列和净值列
                     cols = equity_df.columns.tolist()
                     date_col = None
                     equity_col = None
@@ -180,7 +189,7 @@ def results_page(exp_name: str):
                 else:
                     ui.label("无搜索日志数据。").classes("text-grey-6")
 
-        # ---- 下载 ----
+        # ---- 下载（在 data is not None 的 guard 内） ----
         report_path = Path(data["path"]) / "report.xlsx"
         if report_path.exists():
             ui.button(

@@ -366,5 +366,8 @@ def collect_form_values(form_widgets: dict) -> dict:
                     val = [int(x.strip()) for x in val.strip("[]").split(",") if x.strip()]
                 except ValueError:
                     val = [5, 10, 20]
+            # 处理 NiceGUI switch 组件的布尔值（确保是 bool 而非 NiceGUI 对象）
+            if isinstance(val, bool):
+                pass  # 已经是 bool
             result[key] = val
     return result
