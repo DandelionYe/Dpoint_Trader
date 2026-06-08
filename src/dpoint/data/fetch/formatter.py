@@ -43,6 +43,39 @@ _INTERNAL_COLS = [COL_DATE, COL_OPEN, COL_HIGH, COL_LOW, COL_CLOSE, COL_VOLUME, 
 # 外部 CSV 列名（来自 DEFAULT_COLUMN_MAP 的 keys）
 _CSV_COLS = list(DEFAULT_COLUMN_MAP.keys())
 
+# CSV 列名到 QMT 列名的映射（用于构建 DataFrame）
+_CSV_COL_MAP = {
+    "Date": None,  # 特殊处理：从 time 转换
+    "Open (CNY, qfq)": "open",
+    "High (CNY, qfq)": "high",
+    "Low (CNY, qfq)": "low",
+    "Close (CNY, qfq)": "close",
+    "Volume (shares)": "volume",
+}
+
+
+def _parse_qmt_df(df: pd.DataFrame) -> pd.Series:
+    """
+    验证 QMT DataFrame 并解析时间戳。
+
+    Args:
+        df: QMT 返回的 DataFrame
+
+    Returns:
+        解析后的 datetime Series
+    """
+    missing = set(_QMT_REQUIRED) - set(df.columns)
+    if missing:
+        raise ValueError(f"缺少必需列: {missing}")
+
+    dates = pd.to_datetime(df["time"], unit="ms", errors="coerce")
+
+    nat_count = dates.isna().sum()
+    if nat_count > 0:
+        logger.warning("发现 %d 个无效时间戳（已转为 NaT）", nat_count)
+
+    return dates
+
 
 def qmt_to_dpoint_single(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -54,19 +87,10 @@ def qmt_to_dpoint_single(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Dpoint_Trader 格式 DataFrame，列为 date/open_qfq/high_qfq/low_qfq/close_qfq/volume/amount
     """
-    missing = set(_QMT_REQUIRED) - set(df.columns)
-    if missing:
-        raise ValueError(f"缺少必需列: {missing}")
-
     if df.empty:
         return pd.DataFrame(columns=_INTERNAL_COLS)
 
-    dates = pd.to_datetime(df["time"], unit="ms", errors="coerce")
-
-    # 检查并记录无效时间戳
-    nat_count = dates.isna().sum()
-    if nat_count > 0:
-        logger.warning("发现 %d 个无效时间戳（已转为 NaT）", nat_count)
+    dates = _parse_qmt_df(df)
 
     result = pd.DataFrame({
         COL_DATE: dates,
@@ -78,7 +102,6 @@ def qmt_to_dpoint_single(df: pd.DataFrame) -> pd.DataFrame:
         COL_AMOUNT: df["amount"].values if "amount" in df.columns else 0.0,
     })
 
-    # 按日期排序，NaT 排到末尾
     result = result.sort_values(COL_DATE).reset_index(drop=True)
     return result
 
@@ -96,31 +119,17 @@ def qmt_to_dpoint_csv(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         篮子 CSV 格式 DataFrame
     """
-    missing = set(_QMT_REQUIRED) - set(df.columns)
-    if missing:
-        raise ValueError(f"缺少必需列: {missing}")
-
     if df.empty:
         return pd.DataFrame(columns=_CSV_COLS)
 
-    dates = pd.to_datetime(df["time"], unit="ms", errors="coerce")
-
-    # 检查并记录无效时间戳
-    nat_count = dates.isna().sum()
-    if nat_count > 0:
-        logger.warning("发现 %d 个无效时间戳（已转为 NaT）", nat_count)
+    dates = _parse_qmt_df(df)
 
     # NaT 的 strftime 会产生 NaN，用空字符串替换
-    date_strs = dates.dt.strftime(_DATE_FMT)
-    date_strs = date_strs.fillna("")
+    date_strs = dates.dt.strftime(_DATE_FMT).fillna("")
 
     result = pd.DataFrame({
         "Date": date_strs,
-        "Open (CNY, qfq)": df["open"].values,
-        "High (CNY, qfq)": df["high"].values,
-        "Low (CNY, qfq)": df["low"].values,
-        "Close (CNY, qfq)": df["close"].values,
-        "Volume (shares)": df["volume"].values,
+        **{col: df[qmt_col].values for col, qmt_col in _CSV_COL_MAP.items() if qmt_col},
     })
 
     return result

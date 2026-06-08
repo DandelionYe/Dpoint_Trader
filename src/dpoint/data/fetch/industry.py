@@ -52,11 +52,8 @@ class IndustryDB:
 
     def close(self) -> None:
         """关闭数据库连接（幂等，重复调用不会报错）。"""
-        if self._conn:
-            try:
-                self._conn.close()
-            except Exception:
-                pass
+        if self._conn is not None:
+            self._conn.close()
             self._conn = None
 
     def list_industries(self, industry_level: str = "CSMAR_ZX") -> list[IndustryInfo]:

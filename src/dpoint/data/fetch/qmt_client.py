@@ -73,23 +73,14 @@ class QMTClient:
 
         # Step 1: 下载到本地缓存
         # 兼容不同版本的 xtquant：部分版本不支持 keyword-only 参数
-        # 先尝试关键字参数，失败则回退到位置参数
-        if not hasattr(self, "_download_kw_supported"):
-            self._download_kw_supported = True  # 乐观假设，首次失败后切换
-
-        if self._download_kw_supported:
-            try:
-                self._xtdata.download_history_data(
-                    stock_code=stock_code,
-                    period=period,
-                    start_time=start_date,
-                    end_time=end_date,
-                )
-            except TypeError:
-                # 关键字参数不支持，切换到位置参数模式
-                self._download_kw_supported = False
-                self._xtdata.download_history_data(stock_code, period, start_date, end_date)
-        else:
+        try:
+            self._xtdata.download_history_data(
+                stock_code=stock_code,
+                period=period,
+                start_time=start_date,
+                end_time=end_date,
+            )
+        except TypeError:
             self._xtdata.download_history_data(stock_code, period, start_date, end_date)
 
         # Step 2: 从缓存读取
@@ -108,7 +99,7 @@ class QMTClient:
             logger.warning("No data returned for %s", stock_code)
             return pd.DataFrame()
 
-        df = data[stock_code].copy()
+        df = data[stock_code]
 
         # 标准化列名和索引名（xtquant 可能返回混合大小写）
         df.columns = [str(c).lower() for c in df.columns]

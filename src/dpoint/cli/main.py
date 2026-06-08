@@ -808,35 +808,49 @@ def _run_resume_basket(config, state, rng, data_path, parent_dir, args, logger) 
     return 0
 
 
+def _default_date_range(args) -> tuple[str, str]:
+    """计算默认日期范围（6年前至今）。"""
+    from datetime import datetime, timedelta
+
+    now = datetime.now()
+    start = args.start or (now - timedelta(days=365 * 6)).strftime("%Y%m%d")
+    end = args.end or now.strftime("%Y%m%d")
+    return start, end
+
+
+def _make_qmt_client():
+    """创建 QMT 客户端，失败时返回 None。"""
+    from dpoint.data.fetch.qmt_client import QMTClient
+
+    try:
+        return QMTClient()
+    except ImportError as e:
+        logging.getLogger("dpoint.fetch").error(str(e))
+        return None
+
+
 def run_fetch_single(args) -> int:
     """获取单只股票历史数据。"""
     logger = logging.getLogger("dpoint.fetch.single")
 
-    from datetime import datetime, timedelta
+    from dpoint.data.fetch.formatter import generate_csv_filename, qmt_to_dpoint_single
 
-    from dpoint.data.fetch.formatter import qmt_to_dpoint_single
-    from dpoint.data.fetch.qmt_client import QMTClient
-
-    # 计算默认起始日期（6年前）
-    start = args.start or (datetime.now() - timedelta(days=365 * 6)).strftime("%Y%m%d")
-    end = args.end or datetime.now().strftime("%Y%m%d")
+    start, end = _default_date_range(args)
 
     # 确定输出路径
     if args.output:
         output_path = Path(args.output)
     else:
-        code_clean = args.code.replace(".", "_")
         ext = "xlsx" if args.format == "xlsx" else "csv"
-        output_path = Path("data") / f"{code_clean}_{start}_{end}.{ext}"
+        stem = generate_csv_filename(args.code, start).replace(".csv", "")
+        output_path = Path("data") / f"{stem}_{end}.{ext}"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # 获取数据
     logger.info("Fetching %s from QMT...", args.code)
-    try:
-        client = QMTClient()
-    except ImportError as e:
-        logger.error(str(e))
+    client = _make_qmt_client()
+    if client is None:
         return 1
 
     raw_df = client.fetch_daily_history(args.code, start_date=start, end_date=end)
@@ -863,9 +877,12 @@ def run_fetch_basket(args) -> int:
     """获取行业篮子数据。"""
     logger = logging.getLogger("dpoint.fetch.basket")
 
-    from dpoint.data.fetch.formatter import generate_csv_filename, qmt_to_dpoint_csv
+    from dpoint.data.fetch.formatter import (
+        generate_csv_filename,
+        qmt_to_dpoint_csv,
+        qmt_to_dpoint_single,
+    )
     from dpoint.data.fetch.industry import DEFAULT_DB_PATH, IndustryDB
-    from dpoint.data.fetch.qmt_client import QMTClient
 
     # 确定数据库路径
     db_path = args.db if args.db else DEFAULT_DB_PATH
@@ -894,28 +911,20 @@ def run_fetch_basket(args) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # 批量获取
-    try:
-        client = QMTClient()
-    except ImportError as e:
-        logger.error(str(e))
+    client = _make_qmt_client()
+    if client is None:
         return 1
 
-    # 确定日期范围（用于文件名和 QMT 获取）
-    from datetime import datetime, timedelta
-    start = args.start or (datetime.now() - timedelta(days=365 * 6)).strftime("%Y%m%d")
-    end = args.end or datetime.now().strftime("%Y%m%d")
-
+    start, end = _default_date_range(args)
     data = client.fetch_batch(members, start_date=start, end_date=end)
 
     # 保存
-    from dpoint.data.fetch.formatter import qmt_to_dpoint_single
-
     saved = 0
     for code, raw_df in data.items():
         if args.format == "xlsx":
             df = qmt_to_dpoint_single(raw_df)
-            code_clean = code.split(".")[0] if "." in code else code
-            filepath = output_dir / f"{code_clean}_{start}.xlsx"
+            stem = generate_csv_filename(code, start).replace(".csv", "")
+            filepath = output_dir / f"{stem}.xlsx"
             df.to_excel(filepath, index=False, engine="openpyxl")
         else:
             df = qmt_to_dpoint_csv(raw_df)
@@ -947,13 +956,11 @@ def main(argv=None) -> int:
         return run_resume(args)
     elif args.command == "fetch":
         if not args.fetch_mode:
-            # 找到 fetch 子解析器并打印帮助
-            for action in parser._subparsers._actions:
-                if isinstance(action, argparse._SubParsersAction):
-                    fetch_parser = action.choices.get("fetch")
-                    if fetch_parser:
-                        fetch_parser.print_help()
-                        break
+            # 重新解析 fetch --help 来打印帮助（捕获 SystemExit）
+            try:
+                parser.parse_args(["fetch", "--help"])
+            except SystemExit:
+                pass
             return 1
         if args.fetch_mode == "single":
             return run_fetch_single(args)
