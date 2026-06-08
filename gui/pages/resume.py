@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -14,42 +13,7 @@ from nicegui import ui
 from gui.components.layout import create_page_layout
 from gui.components.log_panel import create_log_panel, stream_subprocess_output
 from gui.state import app_state
-
-
-def _safe_int(value, default: int | None = None) -> int | None:
-    """安全地将 widget value 转为 int，处理 None 和空字符串。"""
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _list_experiments(output_dir: Path) -> list[dict]:
-    """列出已有实验。"""
-    experiments = []
-    if not output_dir.exists():
-        return experiments
-    for exp_dir in sorted(output_dir.iterdir(), reverse=True):
-        if not exp_dir.is_dir():
-            continue
-        state_path = exp_dir / "search_state.json"
-        if state_path.exists():
-            config_path = exp_dir / "config.json"
-            mode = "unknown"
-            if config_path.exists():
-                try:
-                    cfg = json.loads(config_path.read_text(encoding="utf-8"))
-                    mode = cfg.get("mode", "unknown")
-                except Exception:
-                    pass
-            experiments.append({
-                "name": exp_dir.name,
-                "path": str(exp_dir),
-                "mode": mode,
-            })
-    return experiments
+from gui.utils import safe_int, scan_experiments
 
 
 @ui.page("/resume")
@@ -64,7 +28,7 @@ def resume_page():
 
         # 扫描实验
         output_dir = Path(app_state.output_dir)
-        experiments = _list_experiments(output_dir)
+        experiments = scan_experiments(output_dir, require_state=True)
 
         if not experiments:
             ui.label("未找到可恢复的实验。请先运行单股或篮子策略。").classes("text-grey-6")
@@ -140,13 +104,13 @@ def resume_page():
             try:
                 cmd = [sys.executable, "-m", "dpoint.cli.main", "resume"]
                 cmd += [selected_exp.value]
-                runs_val = _safe_int(runs.value, 100)
+                runs_val = safe_int(runs.value, 100)
                 cmd += ["--runs", str(runs_val)]
-                n_rounds_val = _safe_int(n_rounds.value, 4)
+                n_rounds_val = safe_int(n_rounds.value, 4)
                 cmd += ["--n_rounds", str(n_rounds_val)]
                 if metric.value:
                     cmd += ["--metric", metric.value]
-                seed_val = _safe_int(seed.value, None)
+                seed_val = safe_int(seed.value, None)
                 if seed_val is not None:
                     cmd += ["--seed", str(seed_val)]
                 cmd += ["--output", output.value or "output"]

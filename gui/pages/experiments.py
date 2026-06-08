@@ -5,69 +5,17 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import shutil
-from datetime import datetime
 from pathlib import Path
 
 from nicegui import ui
 
 from gui.components.layout import create_page_layout
 from gui.state import app_state
+from gui.utils import scan_experiments
 
 logger = logging.getLogger(__name__)
-
-
-def _scan_experiments(output_dir: Path) -> list[dict]:
-    """扫描所有实验并返回详情列表。"""
-    experiments = []
-    if not output_dir.exists():
-        return experiments
-
-    for exp_dir in sorted(output_dir.iterdir(), reverse=True):
-        if not exp_dir.is_dir():
-            continue
-
-        # 使用 st_mtime 作为创建时间（st_ctime 在 Linux 上是 inode 变更时间）
-        stat = exp_dir.stat()
-        ts = stat.st_mtime
-        info = {
-            "name": exp_dir.name,
-            "path": str(exp_dir),
-            "mode": "unknown",
-            "model_type": "unknown",
-            "seed": "?",
-            "created": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M"),
-            "has_report": (exp_dir / "report.xlsx").exists(),
-            "has_state": (exp_dir / "search_state.json").exists(),
-        }
-
-        # 读取 manifest
-        manifest_path = exp_dir / "manifest.json"
-        if manifest_path.exists():
-            try:
-                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-                cfg = manifest.get("config", {})
-                info["mode"] = cfg.get("mode", "unknown")
-                info["model_type"] = cfg.get("model", {}).get("model_type", "unknown")
-                info["seed"] = cfg.get("search", {}).get("seed", "?")
-            except Exception:
-                pass
-
-        # 读取 config.json
-        config_path = exp_dir / "config.json"
-        if config_path.exists() and info["mode"] == "unknown":
-            try:
-                cfg = json.loads(config_path.read_text(encoding="utf-8"))
-                info["mode"] = cfg.get("mode", "unknown")
-                info["model_type"] = cfg.get("model", {}).get("model_type", "unknown")
-            except Exception:
-                pass
-
-        experiments.append(info)
-
-    return experiments
 
 
 @ui.page("/experiments")
@@ -78,7 +26,7 @@ def experiments_page():
         ui.label("实验浏览").classes("text-h4")
 
         output_dir = Path(app_state.output_dir)
-        experiments = _scan_experiments(output_dir)
+        experiments = scan_experiments(output_dir)
 
         # 工具栏
         with ui.row().classes("gap-4 items-center w-full"):

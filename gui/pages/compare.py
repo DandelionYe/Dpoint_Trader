@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 
@@ -15,43 +14,9 @@ from nicegui import ui
 from gui.components.layout import create_page_layout
 from gui.components.charts import comparison_equity_chart
 from gui.state import app_state
+from gui.utils import scan_experiments, validate_output_subpath
 
 logger = logging.getLogger(__name__)
-
-
-def _validate_path(path_str: str) -> Path | None:
-    """校验路径，防止路径穿越。"""
-    output_dir = Path(app_state.output_dir).resolve()
-    target = Path(path_str).resolve()
-    if not str(target).startswith(str(output_dir)):
-        return None
-    return target
-
-
-def _list_experiments_for_compare(output_dir: Path) -> list[dict]:
-    """列出有报告的实验。"""
-    experiments = []
-    if not output_dir.exists():
-        return experiments
-    for exp_dir in sorted(output_dir.iterdir(), reverse=True):
-        if not exp_dir.is_dir():
-            continue
-        report_path = exp_dir / "report.xlsx"
-        config_path = exp_dir / "config.json"
-        mode = "unknown"
-        if config_path.exists():
-            try:
-                cfg = json.loads(config_path.read_text(encoding="utf-8"))
-                mode = cfg.get("mode", "unknown")
-            except Exception:
-                pass
-        experiments.append({
-            "name": exp_dir.name,
-            "path": str(exp_dir),
-            "mode": mode,
-            "has_report": report_path.exists(),
-        })
-    return experiments
 
 
 def _load_risk_metrics(exp_path: str) -> dict:
@@ -102,15 +67,14 @@ def compare_page():
         ui.label("选择多个实验进行指标对比和权益曲线叠加。").classes("text-grey-6")
 
         output_dir = Path(app_state.output_dir)
-        experiments = _list_experiments_for_compare(output_dir)
-        available = [e for e in experiments if e["has_report"]]
+        experiments = scan_experiments(output_dir, require_report=True)
 
-        if not available:
+        if not experiments:
             ui.label("没有可对比的实验（需要有 Excel 报告）。").classes("text-grey-6")
             return
 
         # 选择实验
-        exp_options = {e["path"]: f"{e['name']} ({e['mode']})" for e in available}
+        exp_options = {e["path"]: f"{e['name']} ({e['mode']})" for e in experiments}
         selected = ui.select(
             exp_options,
             label="选择要对比的实验（可多选）",
@@ -129,7 +93,7 @@ def compare_page():
 
             # 校验路径
             for p in paths:
-                if _validate_path(p) is None:
+                if validate_output_subpath(app_state.output_dir, Path(p).name) is None:
                     ui.notify(f"非法路径: {p}", type="negative")
                     return
 

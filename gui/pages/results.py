@@ -15,45 +15,27 @@ from nicegui import ui
 from gui.components.layout import create_page_layout
 from gui.components.charts import equity_curve_chart, drawdown_chart
 from gui.state import app_state
+from gui.utils import validate_output_subpath
 
 logger = logging.getLogger(__name__)
 
 
-def _validate_exp_name(exp_name: str) -> Path | None:
-    """校验实验名，防止路径穿越。返回合法的实验目录路径或 None。"""
-    output_dir = Path(app_state.output_dir).resolve()
-    exp_dir = (output_dir / exp_name).resolve()
-    # 确保解析后的路径仍在 output_dir 下
-    if not str(exp_dir).startswith(str(output_dir)):
-        return None
-    return exp_dir
-
-
 def _load_experiment(exp_name: str) -> dict | None:
     """加载实验数据。"""
-    exp_dir = _validate_exp_name(exp_name)
+    exp_dir = validate_output_subpath(app_state.output_dir, exp_name)
     if exp_dir is None or not exp_dir.exists():
         return None
 
     data = {"name": exp_name, "path": str(exp_dir)}
 
-    # 读取 manifest
-    manifest_path = exp_dir / "manifest.json"
-    if manifest_path.exists():
-        try:
-            data["manifest"] = json.loads(manifest_path.read_text(encoding="utf-8"))
-        except Exception as e:
-            logger.warning("读取 manifest.json 失败: %s", e)
+    for filename, key in [("manifest.json", "manifest"), ("config.json", "config")]:
+        fpath = exp_dir / filename
+        if fpath.exists():
+            try:
+                data[key] = json.loads(fpath.read_text(encoding="utf-8"))
+            except Exception as e:
+                logger.warning("读取 %s 失败: %s", filename, e)
 
-    # 读取 config
-    config_path = exp_dir / "config.json"
-    if config_path.exists():
-        try:
-            data["config"] = json.loads(config_path.read_text(encoding="utf-8"))
-        except Exception as e:
-            logger.warning("读取 config.json 失败: %s", e)
-
-    # 读取 Excel 报告
     report_path = exp_dir / "report.xlsx"
     if report_path.exists():
         for sheet_name, key in [
@@ -65,12 +47,24 @@ def _load_experiment(exp_name: str) -> dict | None:
             try:
                 data[key] = pd.read_excel(report_path, sheet_name=sheet_name)
             except ValueError:
-                # 工作表不存在，正常跳过
                 pass
             except Exception as e:
                 logger.warning("读取 %s 的 %s 工作表失败: %s", report_path, sheet_name, e)
 
     return data
+
+
+def _render_df_table(df: pd.DataFrame, empty_msg: str = "无数据") -> None:
+    """将 DataFrame 渲染为 NiceGUI 表格（最多 200 行）。"""
+    if df is None or df.empty:
+        ui.label(empty_msg).classes("text-grey-6")
+        return
+    columns = [
+        {"name": str(c), "label": str(c), "field": str(c), "align": "left"}
+        for c in df.columns
+    ]
+    rows = [{str(k): str(v) for k, v in r.items()} for r in df.head(200).to_dict("records")]
+    ui.table(columns=columns, rows=rows, row_key=str(df.columns[0])).classes("w-full")
 
 
 @ui.page("/results/{exp_name}")
@@ -108,7 +102,6 @@ def results_page(exp_name: str):
                 ui.label("风险指标").classes("text-h6")
                 ui.separator()
                 with ui.row().classes("gap-4 flex-wrap"):
-                    # RiskMetrics 是列方向：指标名为列头，一行为值
                     row = risk_df.iloc[0]
                     for col_name in risk_df.columns:
                         with ui.card().classes("flex-1 min-w-[120px]"):
@@ -117,8 +110,6 @@ def results_page(exp_name: str):
 
         # ---- 图表 Tabs ----
         equity_df = data.get("equity_df")
-        search_df = data.get("search_df")
-        trades_df = data.get("trades_df")
 
         with ui.tabs() as tabs:
             tab_equity = ui.tab("权益曲线", icon="show_chart")
@@ -126,68 +117,27 @@ def results_page(exp_name: str):
             tab_search = ui.tab("搜索日志", icon="search")
 
         with ui.tab_panels(tabs, value=tab_equity).classes("w-full"):
-            # 权益曲线
             with ui.tab_panel(tab_equity):
                 if equity_df is not None and not equity_df.empty:
                     cols = equity_df.columns.tolist()
-                    date_col = None
-                    equity_col = None
-                    dd_col = None
-
-                    for c in cols:
-                        cl = str(c).lower()
-                        if "date" in cl or "日期" in cl:
-                            date_col = c
-                        elif "equity" in cl or "净值" in cl or "cumulative" in cl:
-                            equity_col = c
-                        elif "drawdown" in cl or "回撤" in cl:
-                            dd_col = c
-
-                    if date_col is None:
-                        date_col = cols[0]
-                    if equity_col is None:
-                        equity_col = cols[1] if len(cols) > 1 else cols[0]
+                    date_col = next((c for c in cols if "date" in str(c).lower() or "日期" in str(c)), cols[0])
+                    equity_col = next((c for c in cols if "equity" in str(c).lower() or "净值" in str(c) or "cumulative" in str(c).lower()), cols[1] if len(cols) > 1 else cols[0])
+                    dd_col = next((c for c in cols if "drawdown" in str(c).lower() or "回撤" in str(c)), None)
 
                     dates = equity_df[date_col].astype(str).tolist()
                     equity_values = equity_df[equity_col].tolist()
-
                     equity_curve_chart(dates, equity_values, title=f"{exp_name} 权益曲线")
 
                     if dd_col:
-                        dd_values = equity_df[dd_col].tolist()
-                        drawdown_chart(dates, dd_values, title=f"{exp_name} 回撤曲线")
+                        drawdown_chart(dates, equity_df[dd_col].tolist(), title=f"{exp_name} 回撤曲线")
                 else:
                     ui.label("无权益曲线数据。").classes("text-grey-6")
 
-            # 交易记录
             with ui.tab_panel(tab_trades):
-                if trades_df is not None and not trades_df.empty:
-                    columns = [
-                        {"name": str(c), "label": str(c), "field": str(c), "align": "left"}
-                        for c in trades_df.columns
-                    ]
-                    rows = trades_df.head(200).to_dict("records")
-                    rows = [{str(k): str(v) for k, v in r.items()} for r in rows]
-                    ui.table(columns=columns, rows=rows, row_key=str(trades_df.columns[0])).classes(
-                        "w-full"
-                    )
-                else:
-                    ui.label("无交易记录数据。").classes("text-grey-6")
+                _render_df_table(data.get("trades_df"), "无交易记录数据。")
 
-            # 搜索日志
             with ui.tab_panel(tab_search):
-                if search_df is not None and not search_df.empty:
-                    columns = [
-                        {"name": str(c), "label": str(c), "field": str(c), "align": "left"}
-                        for c in search_df.columns
-                    ]
-                    rows = search_df.head(200).to_dict("records")
-                    rows = [{str(k): str(v) for k, v in r.items()} for r in rows]
-                    ui.table(columns=columns, rows=rows, row_key=str(search_df.columns[0])).classes(
-                        "w-full"
-                    )
-                else:
-                    ui.label("无搜索日志数据。").classes("text-grey-6")
+                _render_df_table(data.get("search_df"), "无搜索日志数据。")
 
         # ---- 下载（在 data is not None 的 guard 内） ----
         report_path = Path(data["path"]) / "report.xlsx"

@@ -5,10 +5,6 @@
 
 from __future__ import annotations
 
-import json
-import sys
-import tempfile
-
 from nicegui import ui
 
 from gui.components.layout import create_page_layout
@@ -21,26 +17,8 @@ from gui.components.config_forms import (
     portfolio_config_form,
     collect_form_values,
 )
-from gui.components.log_panel import create_log_panel, stream_subprocess_output
 from gui.state import app_state
-
-
-def _safe_int(value, default: int) -> int:
-    if value is None:
-        return default
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _safe_float(value, default: float) -> float:
-    if value is None:
-        return default
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
+from gui.utils import safe_int, run_experiment_subprocess
 
 
 @ui.page("/run/basket")
@@ -77,9 +55,7 @@ def run_basket_page():
                     ["none", "inner", "outer", "majority"],
                     label="日历对齐",
                     value="none",
-                ).tooltip(
-                    "none=不对齐, inner=取交集, outer=取并集, majority=取多数"
-                )
+                ).tooltip("none=不对齐, inner=取交集, outer=取并集, majority=取多数")
 
         # ---- Tab 配置面板 ----
         with ui.tabs() as tabs:
@@ -102,73 +78,45 @@ def run_basket_page():
                 trade_widgets = trade_config_form()
                 split_widgets = split_config_form()
 
-        # ---- 运行按钮和状态 ----
-        run_button = ui.button(
-            "▶ 开始运行",
-            color="green",
-            icon="play_arrow",
-        ).classes("text-white")
+        # ---- 运行 ----
+        run_button = ui.button("▶ 开始运行", color="green", icon="play_arrow").classes("text-white")
         is_running = {"value": False}
 
         async def on_run():
-            if is_running["value"]:
-                ui.notify("已有实验正在运行，请等待完成", type="warning")
-                return
-            if not basket_path.value or not basket_path.value.strip():
-                ui.notify("请填写篮子数据目录", type="warning")
-                return
+            feat_vals = collect_form_values(feature_widgets)
+            model_vals = collect_form_values(model_widgets)
+            trade_vals = collect_form_values(trade_widgets)
+            search_vals = collect_form_values(search_widgets)
+            split_vals = collect_form_values(split_widgets)
+            portfolio_vals = collect_form_values(portfolio_widgets)
 
-            is_running["value"] = True
-            run_button.disable()
+            config_dict = {
+                "mode": "basket",
+                "basket_path": (basket_path.value or "").strip(),
+                "output_dir": output_dir.value or "output",
+                "seed": safe_int(search_vals.get("seed"), 42),
+                "device": device.value,
+                "feature": feat_vals,
+                "model": model_vals,
+                "trade": trade_vals,
+                "search": {
+                    "n_candidates": safe_int(search_vals.get("n_candidates"), 100),
+                    "n_rounds": safe_int(search_vals.get("n_rounds"), 4),
+                    "metric": search_vals.get("metric", "rank_ic"),
+                    "seed": safe_int(search_vals.get("seed"), 42),
+                },
+                "split": split_vals,
+                "portfolio": portfolio_vals,
+            }
 
-            try:
-                feat_vals = collect_form_values(feature_widgets)
-                model_vals = collect_form_values(model_widgets)
-                trade_vals = collect_form_values(trade_widgets)
-                search_vals = collect_form_values(search_widgets)
-                split_vals = collect_form_values(split_widgets)
-                portfolio_vals = collect_form_values(portfolio_widgets)
-
-                config_dict = {
-                    "mode": "basket",
-                    "basket_path": basket_path.value.strip(),
-                    "output_dir": output_dir.value or "output",
-                    "seed": _safe_int(search_vals.get("seed"), 42),
-                    "device": device.value,
-                    "feature": feat_vals,
-                    "model": model_vals,
-                    "trade": trade_vals,
-                    "search": {
-                        "n_candidates": _safe_int(search_vals.get("n_candidates"), 100),
-                        "n_rounds": _safe_int(search_vals.get("n_rounds"), 4),
-                        "metric": search_vals.get("metric", "rank_ic"),
-                        "seed": _safe_int(search_vals.get("seed"), 42),
-                    },
-                    "split": split_vals,
-                    "portfolio": portfolio_vals,
-                }
-
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".json", delete=False, encoding="utf-8"
-                ) as f:
-                    json.dump(config_dict, f, ensure_ascii=False, indent=2)
-                    config_path = f.name
-
-                cmd = [sys.executable, "-m", "dpoint.cli.main", "basket"]
-                cmd += ["--basket_path", basket_path.value.strip()]
-                cmd += ["--config", config_path]
-
-                log, status_label, progress = create_log_panel("篮子策略")
-                ui.notify("开始运行篮子策略...", type="info")
-
-                returncode = await stream_subprocess_output(cmd, log, status_label, progress)
-
-                if returncode == 0:
-                    ui.notify("篮子策略运行完成！", type="positive")
-                else:
-                    ui.notify(f"运行失败，退出码: {returncode}", type="negative")
-            finally:
-                is_running["value"] = False
-                run_button.enable()
+            await run_experiment_subprocess(
+                subcommand="basket",
+                primary_arg_name="--basket_path",
+                primary_arg_value=basket_path.value or "",
+                config_dict=config_dict,
+                label="篮子策略",
+                run_button=run_button,
+                is_running=is_running,
+            )
 
         run_button.on_click(on_run)
