@@ -241,3 +241,53 @@ class TestQMTClient:
             assert not df.empty
             assert "open" in df.columns
             assert "close" in df.columns
+
+
+class TestFetchIntegration:
+    """端到端集成测试（需要 XtMiniQMT 运行）。"""
+
+    def test_single_stock_end_to_end(self):
+        """完整流程: 获取 → 转换 → 验证格式。"""
+        from dpoint.data.fetch.formatter import qmt_to_dpoint_single
+        from dpoint.data.fetch.qmt_client import QMTClient
+
+        client = QMTClient()
+        raw = client.fetch_daily_history("000001.SZ", start_date="20240101", end_date="20240131")
+        if raw.empty:
+            pytest.skip("QMT returned empty data")
+
+        df = qmt_to_dpoint_single(raw)
+
+        # 验证 Dpoint_Trader 所需列存在
+        for col in ["date", "open_qfq", "high_qfq", "low_qfq", "close_qfq", "volume"]:
+            assert col in df.columns, f"Missing column: {col}"
+
+        # 验证数据类型
+        assert pd.api.types.is_datetime64_any_dtype(df["date"])
+        assert pd.api.types.is_numeric_dtype(df["open_qfq"])
+
+    def test_basket_csv_roundtrip(self):
+        """验证生成的 CSV 能被 basket_loader 正确加载。"""
+        import tempfile
+
+        from dpoint.data.fetch.formatter import generate_csv_filename, qmt_to_dpoint_csv
+        from dpoint.data.fetch.qmt_client import QMTClient
+
+        client = QMTClient()
+        raw = client.fetch_daily_history("600519.SH", start_date="20240101", end_date="20240131")
+        if raw.empty:
+            pytest.skip("QMT returned empty data")
+
+        csv_df = qmt_to_dpoint_csv(raw)
+
+        # 写入临时文件
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = Path(tmpdir) / generate_csv_filename("600519.SH", "20240101")
+            csv_df.to_csv(filepath, index=False, encoding="utf-8-sig")
+
+            # 用 csv_loader 加载验证
+            from dpoint.data.csv_loader import load_single_csv
+
+            loaded_df, report = load_single_csv(filepath, ticker="600519")
+            assert len(loaded_df) > 0
+            assert "close_qfq" in loaded_df.columns
