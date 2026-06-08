@@ -31,6 +31,11 @@ def qmt_to_dpoint_single(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Dpoint_Trader 格式 DataFrame，列为 date/open_qfq/high_qfq/low_qfq/close_qfq/volume/amount
     """
+    _REQUIRED = ["time", "open", "high", "low", "close", "volume"]
+    missing = set(_REQUIRED) - set(df.columns)
+    if missing:
+        raise ValueError(f"缺少必需列: {missing}")
+
     if df.empty:
         return pd.DataFrame(
             columns=["date", "open_qfq", "high_qfq", "low_qfq", "close_qfq", "volume", "amount"]
@@ -64,6 +69,11 @@ def qmt_to_dpoint_csv(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         篮子 CSV 格式 DataFrame
     """
+    _REQUIRED = ["time", "open", "high", "low", "close", "volume"]
+    missing = set(_REQUIRED) - set(df.columns)
+    if missing:
+        raise ValueError(f"缺少必需列: {missing}")
+
     if df.empty:
         return pd.DataFrame(
             columns=[
@@ -84,7 +94,7 @@ def qmt_to_dpoint_csv(df: pd.DataFrame) -> pd.DataFrame:
     result["High (CNY, qfq)"] = df["high"].values
     result["Low (CNY, qfq)"] = df["low"].values
     result["Close (CNY, qfq)"] = df["close"].values
-    result["Volume (shares)"] = df["volume"].astype(float).values
+    result["Volume (shares)"] = df["volume"].values
 
     return result
 

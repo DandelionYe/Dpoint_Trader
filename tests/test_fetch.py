@@ -124,3 +124,23 @@ class TestGenerateCsvFilename:
 
         name = generate_csv_filename("600519", "20010827")
         assert name == "600519_20010827.csv"
+
+
+class TestFormatterEdgeCases:
+    """测试格式转换器的边界情况。"""
+
+    def test_missing_required_columns(self):
+        """缺少必需列应抛出 ValueError。"""
+        from dpoint.data.fetch.formatter import qmt_to_dpoint_single
+
+        raw = pd.DataFrame({"time": [1609459200000], "open": [10.0]})
+        with pytest.raises(ValueError, match="缺少必需列"):
+            qmt_to_dpoint_single(raw)
+
+    def test_generate_csv_filename_edge_cases(self):
+        """文件名生成的边界情况。"""
+        from dpoint.data.fetch.formatter import generate_csv_filename
+
+        # 代码带多个点
+        name = generate_csv_filename("000001.SZ.HK", "20210101")
+        assert name == "000001_20210101.csv"
