@@ -103,13 +103,36 @@ def build_parser() -> argparse.ArgumentParser:
     fetch_single.add_argument("--format", default="xlsx", choices=["xlsx", "csv"], help="输出格式")
 
     # dpoint fetch basket
-    fetch_basket = fetch_sub.add_parser("basket", help="获取行业篮子数据")
-    fetch_basket.add_argument("--industry", required=True, help="行业代码，如 C27")
+    fetch_basket = fetch_sub.add_parser("basket", help="获取篮子数据（多维度筛选）")
+    # 筛选参数（全部可选）
+    fetch_basket.add_argument("--ind1", default="", help="一级行业代码或名称")
+    fetch_basket.add_argument("--ind2", default="", help="二级行业代码或名称")
+    fetch_basket.add_argument("--ind3", default="", help="三级行业代码或名称")
+    fetch_basket.add_argument("--ind4", default="", help="四级行业代码或名称（中信）")
+    fetch_basket.add_argument("--industry", default="", help="别名，等同于 --ind4（向后兼容）")
+    fetch_basket.add_argument("--province", default="", help="省份名称")
+    fetch_basket.add_argument("--city", default="", help="城市名称")
+    fetch_basket.add_argument("--ownership", default="", help="所有权类型")
+    # 其他选项
     fetch_basket.add_argument("--start", default="", help="起始日期 YYYYMMDD（默认6年前）")
     fetch_basket.add_argument("--end", default="", help="结束日期 YYYYMMDD（默认今天）")
     fetch_basket.add_argument("--output", default="", help="输出目录路径")
     fetch_basket.add_argument("--format", default="csv", choices=["xlsx", "csv"], help="输出格式")
     fetch_basket.add_argument("--db", default="", help="行业分类 SQLite 路径")
+
+    # dpoint fetch list-industries
+    fetch_list_ind = fetch_sub.add_parser("list-industries", help="列出可用行业")
+    fetch_list_ind.add_argument("--level", type=int, choices=[1, 2, 3, 4], help="行业级别（默认全部）")
+
+    # dpoint fetch list-provinces
+    fetch_sub.add_parser("list-provinces", help="列出可用省份")
+
+    # dpoint fetch list-cities
+    fetch_list_cities = fetch_sub.add_parser("list-cities", help="列出可用城市")
+    fetch_list_cities.add_argument("--province", default="", help="按省份筛选")
+
+    # dpoint fetch list-ownership
+    fetch_sub.add_parser("list-ownership", help="列出可用所有权类型")
 
     return parser
 
@@ -873,8 +896,60 @@ def run_fetch_single(args) -> int:
     return 0
 
 
+def run_fetch_list(args) -> int:
+    """列出分类维度的可选值。"""
+    from dpoint.data.fetch.industry import DEFAULT_DB_PATH, IndustryDB
+
+    db_path = DEFAULT_DB_PATH
+
+    try:
+        with IndustryDB(db_path) as db:
+            fetch_mode = args.fetch_mode
+
+            if fetch_mode == "list-industries":
+                levels = [args.level] if args.level else [1, 2, 3, 4]
+                for level in levels:
+                    dim = f"ind{level}"
+                    values = db.list_values(dim)
+                    print(f"\n=== {level} 级行业 ({dim}) === 共 {len(values)} 个")
+                    for v in values:
+                        print(f"  {v.code:8s} {v.name:20s} ({v.count} 只)")
+
+            elif fetch_mode == "list-provinces":
+                values = db.list_values("province")
+                print(f"\n=== 省份 === 共 {len(values)} 个")
+                for v in values:
+                    print(f"  {v.code:8s} {v.name:10s} ({v.count} 只)")
+
+            elif fetch_mode == "list-cities":
+                if args.province:
+                    values = db.list_values("city")
+                    print(f"\n=== {args.province} 的城市 ===")
+                    for v in values:
+                        city_codes = db.query_stocks(city=v.name, province=args.province)
+                        if city_codes:
+                            print(f"  {v.code:8s} {v.name:10s} ({len(city_codes)} 只)")
+                else:
+                    values = db.list_values("city")
+                    print(f"\n=== 城市 === 共 {len(values)} 个")
+                    for v in values:
+                        print(f"  {v.code:8s} {v.name:10s} ({v.count} 只)")
+
+            elif fetch_mode == "list-ownership":
+                values = db.list_values("ownership")
+                print(f"\n=== 所有权类型 === 共 {len(values)} 个")
+                for v in values:
+                    print(f"  {v.code:8s} {v.name:10s} ({v.count} 只)")
+
+    except FileNotFoundError as e:
+        print(f"错误: {e}")
+        return 1
+
+    return 0
+
+
 def run_fetch_basket(args) -> int:
-    """获取行业篮子数据。"""
+    """获取篮子数据（多维度筛选）。"""
     logger = logging.getLogger("dpoint.fetch.basket")
 
     from dpoint.data.fetch.formatter import (
@@ -887,28 +962,41 @@ def run_fetch_basket(args) -> int:
     # 确定数据库路径
     db_path = args.db if args.db else DEFAULT_DB_PATH
 
-    # 查询行业成员
+    # 构建筛选条件
+    filters: dict[str, str] = {}
+    # --industry 是 --ind4 的别名
+    ind4_value = args.ind4 or args.industry
+    if ind4_value:
+        filters["ind4"] = ind4_value
+    for dim in ("ind1", "ind2", "ind3", "province", "city", "ownership"):
+        val = getattr(args, dim, "")
+        if val:
+            filters[dim] = val
+
+    if not filters:
+        logger.error("至少需要指定一个筛选条件，如 --ind4 C27 或 --province 广东省")
+        return 1
+
+    # 查询股票
     try:
         with IndustryDB(db_path) as db:
-            members = db.query_stocks(ind4=args.industry)
+            members = db.query_stocks(**filters)
             if not members:
-                logger.error("行业代码 '%s' 未找到任何股票", args.industry)
-                logger.info("可用行业示例:")
-                for info in db.list_values("ind4")[:10]:
-                    logger.info("  %s %s (%d只)", info.code, info.name, info.count)
+                logger.error("筛选条件 %s 未找到任何股票", filters)
                 return 1
     except FileNotFoundError as e:
         logger.error(str(e))
         return 1
 
-    logger.info("行业 %s 共 %d 只股票", args.industry, len(members))
-
-    # 确定输出目录
+    # 构建输出目录名
     if args.output:
         output_dir = Path(args.output)
     else:
-        output_dir = Path("data") / f"basket_{args.industry}"
+        parts = [f"{dim}_{val}" for dim, val in filters.items()]
+        output_dir = Path("data") / f"basket_{'_'.join(parts)}"
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info("筛选条件: %s, 共 %d 只股票", filters, len(members))
 
     # 批量获取
     client = _make_qmt_client()
@@ -966,6 +1054,13 @@ def main(argv=None) -> int:
             return run_fetch_single(args)
         elif args.fetch_mode == "basket":
             return run_fetch_basket(args)
+        elif args.fetch_mode in (
+            "list-industries",
+            "list-provinces",
+            "list-cities",
+            "list-ownership",
+        ):
+            return run_fetch_list(args)
         else:
             logger.error("未知的 fetch 模式: %s", args.fetch_mode)
             return 1
