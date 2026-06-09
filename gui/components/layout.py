@@ -40,6 +40,7 @@ def create_page_layout() -> None:
                 ("🏠", "仪表盘", "/"),
                 ("📈", "运行单股策略", "/run/single"),
                 ("📊", "运行篮子策略", "/run/basket"),
+                ("📥", "数据获取", "/fetch"),
                 ("🔄", "恢复搜索", "/resume"),
                 ("📋", "实验浏览", "/experiments"),
                 ("🔍", "实验对比", "/compare"),

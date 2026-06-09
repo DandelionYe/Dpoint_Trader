@@ -29,6 +29,7 @@ from gui.pages import resume  # noqa: F401
 from gui.pages import experiments  # noqa: F401
 from gui.pages import results  # noqa: F401
 from gui.pages import compare  # noqa: F401
+from gui.pages import fetch  # noqa: F401
 
 
 def main():
