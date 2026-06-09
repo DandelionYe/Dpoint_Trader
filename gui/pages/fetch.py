@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime, timedelta
-from pathlib import Path
 
 from nicegui import ui
 
@@ -32,6 +31,13 @@ def _parse_dimension_code(selection: str) -> str | None:
     if not selection or selection == "全部":
         return None
     return selection.split()[0]
+
+
+def _default_date_range() -> tuple[str, str]:
+    """返回默认日期范围（6 年前到今天），格式 YYYYMMDD。"""
+    today = datetime.now()
+    six_years_ago = today - timedelta(days=365 * 6)
+    return six_years_ago.strftime("%Y%m%d"), today.strftime("%Y%m%d")
 
 
 # ── 页面 ─────────────────────────────────────────────────────
@@ -84,10 +90,7 @@ def _create_single_tab():
             )
 
         # 日期范围
-        today = datetime.now()
-        six_years_ago = today - timedelta(days=365 * 6)
-        default_start = six_years_ago.strftime("%Y%m%d")
-        default_end = today.strftime("%Y%m%d")
+        default_start, default_end = _default_date_range()
 
         with ui.row().classes("gap-4 w-full"):
             start_input = ui.input(
@@ -102,7 +105,7 @@ def _create_single_tab():
             )
             output_input = ui.input(
                 label="输出路径",
-                value="data/",
+                value=app_state.output_dir,
                 placeholder="如: data/",
             )
 
@@ -113,6 +116,9 @@ def _create_single_tab():
     is_running = {"value": False}
 
     async def on_run_single():
+        # 【修复 #1】is_running 守卫：防止双击竞态
+        if is_running["value"]:
+            return
         code = (code_input.value or "").strip()
         if not code:
             ui.notify("请填写股票代码", type="warning")
@@ -129,7 +135,7 @@ def _create_single_tab():
                 "--code", code,
                 "--start", (start_input.value or "").strip(),
                 "--end", (end_input.value or "").strip(),
-                "--output", (output_input.value or "data/").strip(),
+                "--output", (output_input.value or app_state.output_dir).strip(),
                 "--format", format_select.value or "xlsx",
             ]
 
@@ -139,7 +145,7 @@ def _create_single_tab():
             returncode = await stream_subprocess_output(cmd, log, status_label, progress)
 
             if returncode == 0:
-                ui.notify(f"获取完成！", type="positive")
+                ui.notify("获取完成！", type="positive")
             else:
                 ui.notify(f"获取失败，退出码: {returncode}", type="negative")
         finally:
@@ -154,16 +160,25 @@ def _create_single_tab():
 
 def _create_basket_tab():
     """创建获取篮子的表单（7 维度筛选）。"""
-    # 加载 IndustryDB
+    # 【修复 #4】用 try/finally 确保 db 连接在异常时也能关闭
+    db = None
     try:
         from dpoint.data.fetch.industry import IndustryDB
-
         db = IndustryDB()
     except FileNotFoundError:
         ui.label("⚠ 行业分类数据库不存在").classes("text-h6 text-red")
         ui.label("请先运行: python scripts/build_industry_db.py").classes("text-grey-6")
         return
 
+    try:
+        _build_basket_form(db)
+    finally:
+        # 【修复 #3】确保 db 始终关闭，不依赖 on_disconnect
+        db.close()
+
+
+def _build_basket_form(db):
+    """构建篮子获取表单（从 _create_basket_tab 拆分，便于管理生命周期）。"""
     with ui.card().classes("w-full"):
         ui.label("筛选条件").classes("text-h6")
         ui.separator()
@@ -241,10 +256,8 @@ def _create_basket_tab():
             select.on_value_change(on_filter_change)
 
     # 日期和输出
-    today = datetime.now()
-    six_years_ago = today - timedelta(days=365 * 6)
-    default_start = six_years_ago.strftime("%Y%m%d")
-    default_end = today.strftime("%Y%m%d")
+    # 【修复 #8】使用共享的 _default_date_range() 函数
+    default_start, default_end = _default_date_range()
 
     with ui.card().classes("w-full"):
         with ui.row().classes("gap-4 w-full"):
@@ -260,7 +273,7 @@ def _create_basket_tab():
             )
             output_input = ui.input(
                 label="输出目录",
-                value="data/",
+                value=app_state.output_dir,
                 placeholder="如: data/",
             )
             format_select = ui.select(
@@ -276,6 +289,9 @@ def _create_basket_tab():
     is_running = {"value": False}
 
     async def on_run_basket():
+        # 【修复 #2】is_running 守卫：防止双击竞态
+        if is_running["value"]:
+            return
         # 构建筛选参数
         args = []
         ind1 = _parse_dimension_code(ind1_select.value)
@@ -314,7 +330,7 @@ def _create_basket_tab():
                 *args,
                 "--start", (start_input.value or "").strip(),
                 "--end", (end_input.value or "").strip(),
-                "--output", (output_input.value or "data/").strip(),
+                "--output", (output_input.value or app_state.output_dir).strip(),
                 "--format", format_select.value or "csv",
             ]
 
@@ -333,9 +349,6 @@ def _create_basket_tab():
 
     run_button.on_click(on_run_basket)
 
-    # 页面关闭时关闭数据库连接
-    ui.context.client.on_disconnect(lambda: db.close())
-
 
 def _update_preview(preview_label, db, **filters):
     """更新预览区的股票数量。"""
@@ -350,4 +363,7 @@ def _update_preview(preview_label, db, **filters):
         if codes:
             preview_label.text += f"  |  前 5 只: {', '.join(codes[:5])}"
     except Exception as e:
+        # 【修复 #5】记录错误日志，便于调试
+        import logging
+        logging.getLogger(__name__).warning("预览查询失败: %s", e)
         preview_label.text = f"查询出错: {e}"
