@@ -160,8 +160,6 @@ def _create_single_tab():
 
 def _create_basket_tab():
     """创建获取篮子的表单（7 维度筛选）。"""
-    # 【修复 #4】用 try/finally 确保 db 连接在异常时也能关闭
-    db = None
     try:
         from dpoint.data.fetch.industry import IndustryDB
         db = IndustryDB()
@@ -170,11 +168,9 @@ def _create_basket_tab():
         ui.label("请先运行: python scripts/build_industry_db.py").classes("text-grey-6")
         return
 
-    try:
-        _build_basket_form(db)
-    finally:
-        # 【修复 #3】确保 db 始终关闭，不依赖 on_disconnect
-        db.close()
+    # 不在此处关闭 db —— UI 回调需要持续使用它。
+    # NiceGUI 页面销毁时 Python GC 会回收连接。
+    _build_basket_form(db)
 
 
 def _build_basket_form(db):

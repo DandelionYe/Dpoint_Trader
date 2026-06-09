@@ -351,11 +351,18 @@ def run_basket(args) -> int:
     set_global_seed(config.seed)
 
     # 2. 加载篮子数据
-    logger.info("Loading basket: %s", args.basket_path)
+    basket_path = Path(args.basket_path)
+    # 自动解析：若给定路径不存在，尝试 data/{path}
+    if not basket_path.is_dir():
+        alt = Path("data") / args.basket_path
+        if alt.is_dir():
+            basket_path = alt
+            logger.info("自动解析篮子路径: %s", basket_path)
+    logger.info("Loading basket: %s", basket_path)
     from dpoint.data.basket_loader import load_basket_folder
 
     panel_df, basket_report = load_basket_folder(
-        args.basket_path, calendar_align=args.calendar_align,
+        basket_path, calendar_align=args.calendar_align,
     )
     logger.info("Loaded basket: %d rows, %d tickers, %d dates",
                 len(panel_df), basket_report.n_files_loaded, panel_df["date"].nunique())
@@ -852,6 +859,19 @@ def _make_qmt_client():
         return None
 
 
+def _to_qmt_code(code: str) -> str:
+    """将 6 位股票代码转为 QMT 格式（加市场后缀）。
+
+    规则:
+        60xxxx / 68xxxx → .SH（上海）
+        其他             → .SZ（深圳）
+    """
+    code = code.strip().split(".")[0]  # 去掉已有后缀
+    if code.startswith(("60", "68")):
+        return f"{code}.SH"
+    return f"{code}.SZ"
+
+
 def run_fetch_single(args) -> int:
     """获取单只股票历史数据。"""
     logger = logging.getLogger("dpoint.fetch.single")
@@ -871,12 +891,13 @@ def run_fetch_single(args) -> int:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # 获取数据
-    logger.info("Fetching %s from QMT...", args.code)
+    qmt_code = _to_qmt_code(args.code)
+    logger.info("Fetching %s from QMT...", qmt_code)
     client = _make_qmt_client()
     if client is None:
         return 1
 
-    raw_df = client.fetch_daily_history(args.code, start_date=start, end_date=end)
+    raw_df = client.fetch_daily_history(qmt_code, start_date=start, end_date=end)
     if raw_df.empty:
         logger.error("未获取到 %s 的数据", args.code)
         return 1
@@ -1003,8 +1024,11 @@ def run_fetch_basket(args) -> int:
     if client is None:
         return 1
 
+    # 行业数据库返回 6 位代码，QMT 需要带市场后缀（如 000089.SZ）
+    qmt_codes = [_to_qmt_code(c) for c in members]
+
     start, end = _default_date_range(args)
-    data = client.fetch_batch(members, start_date=start, end_date=end)
+    data = client.fetch_batch(qmt_codes, start_date=start, end_date=end)
 
     # 保存
     saved = 0

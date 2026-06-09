@@ -59,6 +59,7 @@ def main():
         reload=False,
         show=True,
         favicon="📈",
+        storage_secret="dpoint-trader-secret",
     )
 
 
