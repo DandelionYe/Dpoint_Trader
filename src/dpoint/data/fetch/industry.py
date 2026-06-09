@@ -41,17 +41,6 @@ _DIMENSION_COLUMNS = {
     "ownership": ("ownership_code", "ownership"),
 }
 
-# query_stocks 支持的筛选维度 → 列名
-_FILTER_COLUMNS = {
-    "ind1": "ind1_code",
-    "ind2": "ind2_code",
-    "ind3": "ind3_code",
-    "ind4": "ind4_code",
-    "province": "province",
-    "city": "city",
-    "ownership": "ownership",
-}
-
 
 @dataclass
 class DimensionValue:
@@ -129,13 +118,12 @@ class IndustryDB:
         params: list[str] = []
 
         for dim, value in filters.items():
-            if dim not in _FILTER_COLUMNS:
+            if dim not in _DIMENSION_COLUMNS:
                 raise ValueError(
-                    f"未知筛选维度: {dim}，可选: {list(_FILTER_COLUMNS.keys())}"
+                    f"未知筛选维度: {dim}，可选: {list(_DIMENSION_COLUMNS.keys())}"
                 )
-            col = _FILTER_COLUMNS[dim]
-            # 先尝试按 code 精确匹配，再按 name 匹配
-            conditions.append(f"({col} = ? OR {col.replace('_code', '_name')} = ?)")
+            code_col, name_col = _DIMENSION_COLUMNS[dim]
+            conditions.append(f"({code_col} = ? OR {name_col} = ?)")
             params.extend([value, value])
 
         where = " AND ".join(conditions) if conditions else "1=1"
