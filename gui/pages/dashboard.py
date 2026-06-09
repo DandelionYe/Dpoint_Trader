@@ -67,6 +67,11 @@ def dashboard_page():
                 on_click=lambda: ui.navigate.to("/resume"),
                 color="orange",
             )
+            ui.button(
+                "📥 数据获取",
+                on_click=lambda: ui.navigate.to("/fetch"),
+                color="purple",
+            )
 
         # 最近实验列表
         ui.label("最近实验").classes("text-h6 q-mt-md")
