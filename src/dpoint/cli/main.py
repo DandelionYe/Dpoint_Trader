@@ -890,11 +890,11 @@ def run_fetch_basket(args) -> int:
     # 查询行业成员
     try:
         with IndustryDB(db_path) as db:
-            members = db.get_industry_members(args.industry)
+            members = db.query_stocks(ind4=args.industry)
             if not members:
                 logger.error("行业代码 '%s' 未找到任何股票", args.industry)
                 logger.info("可用行业示例:")
-                for info in db.list_industries()[:10]:
+                for info in db.list_values("ind4")[:10]:
                     logger.info("  %s %s (%d只)", info.code, info.name, info.count)
                 return 1
     except FileNotFoundError as e:
