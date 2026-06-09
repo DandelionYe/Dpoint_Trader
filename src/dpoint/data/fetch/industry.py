@@ -1,13 +1,21 @@
 """
 行业分类数据库查询。
 
-从国泰安 CSMAR SQLite 数据库查询行业成员股票列表。
-数据库来源: J:\\Dandelions_investment_agent\\storage\\reference\\csmar_industry.sqlite
+从本仓库 data/csmar_industry.sqlite 查询股票分类信息。
+支持 7 个维度筛选：4 级行业 + 省份 + 城市 + 所有权。
 
-该数据库由 Dandelions_investment_agent 的 scripts/build_csmar_industry_reference.py 从
-TRD_Co.csv 构建，包含两个表:
-- securities: 每只股票的行业归属
-- industry_members: 行业代码到股票的扁平映射
+用法:
+    from dpoint.data.fetch.industry import IndustryDB
+
+    with IndustryDB() as db:
+        # 列出某维度的可选值
+        industries = db.list_values("ind4")
+
+        # 按维度筛选股票
+        codes = db.query_stocks(ind4="C27", province="广东省")
+
+        # 查询单只股票的分类信息
+        info = db.resolve_stock("000001")
 """
 from __future__ import annotations
 
@@ -18,16 +26,29 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DB_PATH = r"J:\Dandelions_investment_agent\storage\reference\csmar_industry.sqlite"
+# 默认路径：本仓库 data/ 目录
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+DEFAULT_DB_PATH = _PROJECT_ROOT / "data" / "csmar_industry.sqlite"
+
+# list_values 支持的维度及其代码/名称列
+_DIMENSION_COLUMNS = {
+    "ind1": ("ind1_code", "ind1_name"),
+    "ind2": ("ind2_code", "ind2_name"),
+    "ind3": ("ind3_code", "ind3_name"),
+    "ind4": ("ind4_code", "ind4_name"),
+    "province": ("province_code", "province"),
+    "city": ("city_code", "city"),
+    "ownership": ("ownership_code", "ownership"),
+}
 
 
 @dataclass
-class IndustryInfo:
-    """行业信息。"""
+class DimensionValue:
+    """某维度的一个可选值。"""
 
-    code: str  # 行业代码，如 "C27"
-    name: str  # 行业名称，如 "医药制造业"
-    count: int  # 成员股票数量
+    code: str
+    name: str
+    count: int
 
 
 class IndustryDB:
@@ -38,8 +59,7 @@ class IndustryDB:
         if not self.db_path.exists():
             raise FileNotFoundError(
                 f"行业分类数据库不存在: {self.db_path}\n"
-                f"请确认 Dandelions_investment_agent 仓库路径正确，"
-                f"或通过 --db 参数指定数据库路径。"
+                f"请先运行 python scripts/build_industry_db.py 构建数据库。"
             )
         self._conn = sqlite3.connect(str(self.db_path))
         self._conn.row_factory = sqlite3.Row
@@ -51,80 +71,83 @@ class IndustryDB:
         self.close()
 
     def close(self) -> None:
-        """关闭数据库连接（幂等，重复调用不会报错）。"""
+        """关闭数据库连接（幂等）。"""
         if self._conn is not None:
             self._conn.close()
             self._conn = None
 
-    def list_industries(self, industry_level: str = "CSMAR_ZX") -> list[IndustryInfo]:
+    def list_values(self, dimension: str) -> list[DimensionValue]:
         """
-        列出所有行业代码、名称和成员数量。
+        列出某维度的所有可选值及其股票数量。
+
+        Args:
+            dimension: "ind1" | "ind2" | "ind3" | "ind4" | "province" | "city" | "ownership"
+
+        Returns:
+            按数量降序排列的 DimensionValue 列表
         """
-        sql = """
-            SELECT industry_code, industry_name, COUNT(*) as cnt
-            FROM industry_members
-            WHERE industry_level = ? AND is_active = 1
-            GROUP BY industry_code, industry_name
+        if dimension not in _DIMENSION_COLUMNS:
+            raise ValueError(
+                f"未知维度: {dimension}，可选: {list(_DIMENSION_COLUMNS.keys())}"
+            )
+
+        code_col, name_col = _DIMENSION_COLUMNS[dimension]
+        sql = f"""
+            SELECT {code_col} AS code, {name_col} AS name, COUNT(*) AS cnt
+            FROM stocks
+            WHERE {code_col} IS NOT NULL
+            GROUP BY {code_col}, {name_col}
             ORDER BY cnt DESC
         """
-        rows = self._conn.execute(sql, (industry_level,)).fetchall()
+        rows = self._conn.execute(sql).fetchall()
         return [
-            IndustryInfo(code=r["industry_code"], name=r["industry_name"], count=r["cnt"])
-            for r in rows
+            DimensionValue(code=r["code"], name=r["name"], count=r["cnt"]) for r in rows
         ]
 
-    def get_industry_members(
-        self,
-        industry_code: str,
-        industry_level: str = "CSMAR_ZX",
-        active_only: bool = True,
-        exclude_st: bool = True,
-    ) -> list[str]:
+    def query_stocks(self, **filters: str) -> list[str]:
         """
-        获取指定行业的所有股票代码。
-        """
-        conditions = ["industry_code = ?", "industry_level = ?"]
-        params: list = [industry_code, industry_level]
+        按维度筛选股票，返回 6 位代码列表。所有条件取交集。
 
-        if active_only:
-            conditions.append("is_active = 1")
-        if exclude_st:
-            conditions.append("is_st_name = 0")
+        Args:
+            **filters: 维度名=值，如 ind4="C27", province="广东省"
 
-        sql = f"""
-            SELECT symbol
-            FROM industry_members
-            WHERE {" AND ".join(conditions)}
-            ORDER BY symbol
+        Returns:
+            排序后的股票代码列表
         """
+        conditions = []
+        params: list[str] = []
+
+        for dim, value in filters.items():
+            if dim not in _DIMENSION_COLUMNS:
+                raise ValueError(
+                    f"未知筛选维度: {dim}，可选: {list(_DIMENSION_COLUMNS.keys())}"
+                )
+            code_col, name_col = _DIMENSION_COLUMNS[dim]
+            conditions.append(f"({code_col} = ? OR {name_col} = ?)")
+            params.extend([value, value])
+
+        where = " AND ".join(conditions) if conditions else "1=1"
+        sql = f"SELECT code FROM stocks WHERE {where} ORDER BY code"
+
         rows = self._conn.execute(sql, params).fetchall()
-        return [r["symbol"] for r in rows]
+        return [r["code"] for r in rows]
 
-    def resolve_stock_industry(
-        self,
-        symbol: str,
-        industry_level: str = "CSMAR_ZX",
-    ) -> dict:
+    def resolve_stock(self, code: str) -> dict:
         """
-        查询单只股票的行业归属。
+        查询单只股票的全部分类信息。
+
+        Args:
+            code: 6 位股票代码，如 "000001"
+
+        Returns:
+            包含所有分类字段的字典，未找到返回空字典
         """
-        sql = """
-            SELECT primary_industry_code, primary_industry_name,
-                   industry_section_code, industry_section_name
-            FROM securities
-            WHERE symbol = ?
-        """
-        row = self._conn.execute(sql, (symbol,)).fetchone()
+        code = code.split(".")[0] if "." in code else code
+        code = code.zfill(6)
+
+        row = self._conn.execute(
+            "SELECT * FROM stocks WHERE code = ?", (code,)
+        ).fetchone()
         if not row:
             return {}
-
-        if industry_level == "CSMAR_ZX":
-            return {
-                "industry_code": row["primary_industry_code"],
-                "industry_name": row["primary_industry_name"],
-            }
-        else:
-            return {
-                "industry_code": row["industry_section_code"],
-                "industry_name": row["industry_section_name"],
-            }
+        return dict(row)

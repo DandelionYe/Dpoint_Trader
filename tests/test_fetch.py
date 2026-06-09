@@ -151,50 +151,91 @@ class TestFormatterEdgeCases:
 class TestIndustryDB:
     """测试行业分类数据库查询。"""
 
-    def test_list_industries_returns_list(self):
-        """list_industries 应返回行业列表。"""
+    def test_list_values_returns_list(self):
+        """list_values 应返回维度值列表。"""
         from dpoint.data.fetch.industry import IndustryDB
 
-        db_path = r"J:\Dandelions_investment_agent\storage\reference\csmar_industry.sqlite"
-        if not Path(db_path).exists():
-            pytest.skip("CSMAR SQLite not found")
+        db_path = Path(__file__).resolve().parent.parent / "data" / "csmar_industry.sqlite"
+        if not db_path.exists():
+            pytest.skip("csmar_industry.sqlite not found")
 
         with IndustryDB(db_path) as db:
-            industries = db.list_industries()
+            values = db.list_values("ind4")
 
-            assert len(industries) > 0
-            assert hasattr(industries[0], "code")
-            assert hasattr(industries[0], "name")
-            assert hasattr(industries[0], "count")
+            assert len(values) > 0
+            assert hasattr(values[0], "code")
+            assert hasattr(values[0], "name")
+            assert hasattr(values[0], "count")
 
-    def test_get_industry_members_returns_list(self):
-        """get_industry_members 应返回股票代码列表。"""
+    def test_query_stocks_returns_list(self):
+        """query_stocks 应返回股票代码列表。"""
         from dpoint.data.fetch.industry import IndustryDB
 
-        db_path = r"J:\Dandelions_investment_agent\storage\reference\csmar_industry.sqlite"
-        if not Path(db_path).exists():
-            pytest.skip("CSMAR SQLite not found")
+        db_path = Path(__file__).resolve().parent.parent / "data" / "csmar_industry.sqlite"
+        if not db_path.exists():
+            pytest.skip("csmar_industry.sqlite not found")
 
         with IndustryDB(db_path) as db:
-            members = db.get_industry_members("C27")
+            codes = db.query_stocks(ind4="C27")
 
-            assert len(members) > 0
-            # 所有代码应为 CODE.MARKET 格式
-            for code in members:
-                assert "." in code, f"Expected CODE.MARKET format, got: {code}"
+            assert len(codes) > 0
+            # 所有代码应为 6 位数字
+            for code in codes:
+                assert len(code) == 6, f"Expected 6-digit code, got: {code}"
 
-    def test_invalid_industry_code(self):
-        """无效行业代码应返回空列表。"""
+    def test_query_stocks_multi_filter(self):
+        """query_stocks 多条件取交集。"""
         from dpoint.data.fetch.industry import IndustryDB
 
-        db_path = r"J:\Dandelions_investment_agent\storage\reference\csmar_industry.sqlite"
-        if not Path(db_path).exists():
-            pytest.skip("CSMAR SQLite not found")
+        db_path = Path(__file__).resolve().parent.parent / "data" / "csmar_industry.sqlite"
+        if not db_path.exists():
+            pytest.skip("csmar_industry.sqlite not found")
 
         with IndustryDB(db_path) as db:
-            members = db.get_industry_members("ZZZZ99")
+            single = db.query_stocks(ind4="C27")
+            multi = db.query_stocks(ind4="C27", province="广东省")
 
-            assert len(members) == 0
+            assert len(multi) <= len(single)
+            assert len(multi) > 0
+
+    def test_resolve_stock(self):
+        """resolve_stock 应返回股票分类信息。"""
+        from dpoint.data.fetch.industry import IndustryDB
+
+        db_path = Path(__file__).resolve().parent.parent / "data" / "csmar_industry.sqlite"
+        if not db_path.exists():
+            pytest.skip("csmar_industry.sqlite not found")
+
+        with IndustryDB(db_path) as db:
+            info = db.resolve_stock("000001")
+
+            assert "code" in info
+            assert "name" in info
+
+    def test_resolve_stock_not_found(self):
+        """resolve_stock 对不存在的代码应返回空字典。"""
+        from dpoint.data.fetch.industry import IndustryDB
+
+        db_path = Path(__file__).resolve().parent.parent / "data" / "csmar_industry.sqlite"
+        if not db_path.exists():
+            pytest.skip("csmar_industry.sqlite not found")
+
+        with IndustryDB(db_path) as db:
+            info = db.resolve_stock("999999")
+
+            assert info == {}
+
+    def test_invalid_dimension(self):
+        """无效维度应抛出 ValueError。"""
+        from dpoint.data.fetch.industry import IndustryDB
+
+        db_path = Path(__file__).resolve().parent.parent / "data" / "csmar_industry.sqlite"
+        if not db_path.exists():
+            pytest.skip("csmar_industry.sqlite not found")
+
+        with IndustryDB(db_path) as db:
+            with pytest.raises(ValueError, match="未知维度"):
+                db.list_values("invalid_dim")
 
 
 class TestQMTClient:
