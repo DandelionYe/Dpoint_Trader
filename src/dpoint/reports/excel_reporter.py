@@ -118,10 +118,20 @@ def save_excel_report(
     return output_path
 
 
+def _display_len(value) -> int:
+    """返回值的显示长度，安全处理 NaN/None。"""
+    if pd.isna(value):
+        return 0
+    return len(str(value))
+
+
 def _auto_width(worksheet, df: pd.DataFrame):
     """自动调整列宽。"""
     for i, col in enumerate(df.columns):
-        max_len = max(df[col].astype(str).map(len).max(), len(str(col))) + 2
+        series_max = df[col].map(_display_len).max()
+        if pd.isna(series_max):
+            series_max = 0
+        max_len = max(int(series_max), len(str(col))) + 2
         worksheet.set_column(i, i, min(max_len, 50))
 
 

@@ -2,10 +2,29 @@
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 
 import pandas as pd
 import pytest
+
+XTQUANT_AVAILABLE = importlib.util.find_spec("xtquant") is not None
+
+
+def _qmt_connectable() -> bool:
+    """检查 xtquant 是否可导入且能连接到 QMT 服务。"""
+    if not XTQUANT_AVAILABLE:
+        return False
+    try:
+        from xtquant import xtdata
+
+        xtdata.get_client()
+        return True
+    except Exception:
+        return False
+
+
+QMT_AVAILABLE = _qmt_connectable()
 
 
 class TestQmtToDpointSingle:
@@ -271,6 +290,7 @@ class TestQMTClient:
         except ImportError:
             pytest.skip("xtquant not installed (requires QMT)")
 
+    @pytest.mark.skipif(not QMT_AVAILABLE, reason="QMT service not available")
     def test_fetch_single_stock(self):
         """应能获取单只股票的历史数据。"""
         from dpoint.data.fetch.qmt_client import QMTClient
@@ -284,6 +304,7 @@ class TestQMTClient:
         assert "close" in df.columns
         assert "volume" in df.columns
 
+    @pytest.mark.skipif(not QMT_AVAILABLE, reason="QMT service not available")
     def test_fetch_batch(self):
         """应能批量获取多只股票数据。"""
         from dpoint.data.fetch.qmt_client import QMTClient
@@ -310,6 +331,7 @@ class TestQMTClient:
 class TestFetchIntegration:
     """端到端集成测试（需要 XtMiniQMT 运行）。"""
 
+    @pytest.mark.skipif(not QMT_AVAILABLE, reason="QMT service not available")
     def test_single_stock_end_to_end(self):
         """完整流程: 获取 → 转换 → 验证格式。"""
         from dpoint.data.fetch.formatter import qmt_to_dpoint_single
@@ -330,6 +352,7 @@ class TestFetchIntegration:
         assert pd.api.types.is_datetime64_any_dtype(df["date"])
         assert pd.api.types.is_numeric_dtype(df["open_qfq"])
 
+    @pytest.mark.skipif(not QMT_AVAILABLE, reason="QMT service not available")
     def test_basket_csv_roundtrip(self):
         """验证生成的 CSV 能被 basket_loader 正确加载。"""
         import tempfile

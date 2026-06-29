@@ -91,9 +91,9 @@ def test_make_model_sklearn():
 
 
 def test_make_model_torch():
-    try:
-        pass
-    except ImportError:
+    from dpoint.models.torch_models import TORCH_AVAILABLE
+
+    if not TORCH_AVAILABLE:
         pytest.skip("PyTorch not available")
 
     label_spec = LabelSpec(task_type="binary_classification", label_mode="binary_next_close_up")

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Tuple
 
-
 from dpoint.backtester.base import ExecutionStats
 from dpoint.core.constants import (
     DEFAULT_BOARD_LOT,

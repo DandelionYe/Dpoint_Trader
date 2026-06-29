@@ -52,6 +52,7 @@ pythonpath = ["src"]
 
 [tool.isort]
 profile = "black"
+line_length = 120
 known_first_party = ["dpoint"]
 
 [tool.black]
