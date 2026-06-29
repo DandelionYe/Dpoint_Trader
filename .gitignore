@@ -34,6 +34,11 @@ output/
 .env
 *.log
 
+# Local/private data files
+*.sqlite
+*.sqlite3
+*.db
+
 #data
 data/
 
