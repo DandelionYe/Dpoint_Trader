@@ -15,15 +15,20 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+def _escape_excel_value(value):
+    """对以 = + - @ 开头的字符串加单引号前缀，防止 Excel 误判为公式。"""
+    if isinstance(value, str) and value and value[0] in ("=", "+", "-", "@"):
+        if not value.startswith("'"):
+            return "'" + value
+    return value
+
+
 def escape_excel_formulas(df: pd.DataFrame) -> pd.DataFrame:
     """防止 Excel 将字符串误认为公式。"""
-    df = df.copy()
-    for col in df.columns:
-        if df[col].dtype == "object":
-            df[col] = df[col].apply(
-                lambda v: ("'" + v) if isinstance(v, str) and v[:1] in ("=", "+", "-", "@") else v
-            )
-    return df
+    escaped = df.copy()
+    for col in escaped.columns:
+        escaped[col] = escaped[col].map(_escape_excel_value)
+    return escaped
 
 
 def save_excel_report(
