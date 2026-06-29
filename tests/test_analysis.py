@@ -67,8 +67,9 @@ def test_calibration_evaluate():
 
 
 def test_permutation_importance():
-    from dpoint.analysis.explainer import permutation_importance
     from sklearn.tree import DecisionTreeClassifier
+
+    from dpoint.analysis.explainer import permutation_importance
 
     rng = np.random.Generator(np.random.PCG64(42))
     X = rng.normal(0, 1, (100, 5))

@@ -10,10 +10,10 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from dpoint.splits.splitters import (
-    walkforward_splits,
-    walkforward_splits_with_embargo,
     final_holdout_split,
     recommend_n_folds,
+    walkforward_splits,
+    walkforward_splits_with_embargo,
 )
 
 

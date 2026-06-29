@@ -11,7 +11,11 @@ from typing import Dict, Optional, Tuple
 
 import pandas as pd
 
-from dpoint.core.constants import DEFAULT_COLUMN_MAP, OPTIONAL_COLS, REQUIRED_COLS_SINGLE
+from dpoint.core.constants import (
+    DEFAULT_COLUMN_MAP,
+    OPTIONAL_COLS,
+    REQUIRED_COLS_SINGLE,
+)
 from dpoint.data.cleaner import DataReport, clean_ohlcv
 
 logger = logging.getLogger(__name__)

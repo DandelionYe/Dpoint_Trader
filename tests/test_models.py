@@ -9,9 +9,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dpoint.models.registry import make_model, ML_MODELS, DL_MODELS
-from dpoint.models.sklearn_models import create_sklearn_model
 from dpoint.core.tasks import LabelSpec
+from dpoint.models.registry import DL_MODELS, ML_MODELS, make_model
+from dpoint.models.sklearn_models import create_sklearn_model
 
 
 def test_sklearn_logreg():

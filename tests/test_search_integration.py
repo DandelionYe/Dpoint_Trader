@@ -11,7 +11,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from dpoint.core.config import RunConfig
-from dpoint.search.engine import create_evaluate_fn_single, random_search, SearchState
+from dpoint.search.engine import SearchState, create_evaluate_fn_single, random_search
 
 
 def test_evaluate_fn_single_basic(sample_single_df):

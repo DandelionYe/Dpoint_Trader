@@ -12,7 +12,14 @@ from typing import List
 import pandas as pd
 
 from dpoint.core.constants import (
-    COL_AMOUNT, COL_CLOSE, COL_DATE, COL_HIGH, COL_LOW, COL_OPEN, COL_TURNOVER, COL_VOLUME,
+    COL_AMOUNT,
+    COL_CLOSE,
+    COL_DATE,
+    COL_HIGH,
+    COL_LOW,
+    COL_OPEN,
+    COL_TURNOVER,
+    COL_VOLUME,
 )
 
 logger = logging.getLogger(__name__)

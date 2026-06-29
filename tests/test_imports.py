@@ -8,10 +8,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 def test_core_imports():
-    from dpoint.core.constants import COL_CLOSE, COL_DATE, COL_OPEN
     from dpoint.core.config import FeatureConfig, ModelConfig, RunConfig
-    from dpoint.core.tasks import LabelSpec, resolve_label_spec
+    from dpoint.core.constants import COL_CLOSE, COL_DATE, COL_OPEN
     from dpoint.core.contract import DataContract, RunContract
+    from dpoint.core.tasks import LabelSpec, resolve_label_spec
     from dpoint.core.utils import set_global_seed
 
     assert COL_CLOSE == "close_qfq"
@@ -19,37 +19,47 @@ def test_core_imports():
 
 
 def test_data_imports():
-    from dpoint.data.cleaner import clean_ohlcv, DataReport
-    from dpoint.data.excel_loader import load_stock_excel
+    from dpoint.data.basket_loader import discover_csv_files, load_basket_folder
+    from dpoint.data.cleaner import DataReport, clean_ohlcv
     from dpoint.data.csv_loader import load_single_csv, standardize_columns
-    from dpoint.data.panel_builder import build_panel, align_calendar
-    from dpoint.data.basket_loader import load_basket_folder, discover_csv_files
+    from dpoint.data.excel_loader import load_stock_excel
+    from dpoint.data.panel_builder import align_calendar, build_panel
 
 
 def test_features_imports():
-    from dpoint.features.groups import add_all_features, add_momentum_features
     from dpoint.features.cross_sectional import add_cross_sectional_features
+    from dpoint.features.groups import add_all_features, add_momentum_features
     from dpoint.features.labeler import build_label
+    from dpoint.features.pipeline import FeatureMeta, build_features_and_labels
     from dpoint.features.sequence_builder import PanelSequenceStore
-    from dpoint.features.pipeline import build_features_and_labels, FeatureMeta
 
 
 def test_models_imports():
-    from dpoint.models.registry import make_model, ALL_MODELS, ML_MODELS, DL_MODELS
+    from dpoint.models.registry import ALL_MODELS, DL_MODELS, ML_MODELS, make_model
     from dpoint.models.sklearn_models import create_sklearn_model
-    from dpoint.models.torch_models import TORCH_AVAILABLE, DL_MODEL_REGISTRY
-    from dpoint.models.trainer import train_sklearn_model, predict_sklearn_model
+    from dpoint.models.torch_models import DL_MODEL_REGISTRY, TORCH_AVAILABLE
+    from dpoint.models.trainer import predict_sklearn_model, train_sklearn_model
 
 
 def test_splits_imports():
-    from dpoint.splits.splitters import walkforward_splits, walkforward_splits_with_embargo
-    from dpoint.splits.splitters import final_holdout_split, recommend_n_folds, SplitSpec
+    from dpoint.splits.splitters import (
+        SplitSpec,
+        final_holdout_split,
+        recommend_n_folds,
+        walkforward_splits,
+        walkforward_splits_with_embargo,
+    )
 
 
 def test_search_imports():
-    from dpoint.search.metrics import pnl_metric, rank_ic_metric, get_metric_fn, METRIC_REGISTRY
-    from dpoint.search.space import sample_model_config, sample_trade_config, ALL_MODELS
-    from dpoint.search.engine import random_search, SearchState
+    from dpoint.search.engine import SearchState, random_search
+    from dpoint.search.metrics import (
+        METRIC_REGISTRY,
+        get_metric_fn,
+        pnl_metric,
+        rank_ic_metric,
+    )
+    from dpoint.search.space import ALL_MODELS, sample_model_config, sample_trade_config
 
 
 def test_cli_imports():

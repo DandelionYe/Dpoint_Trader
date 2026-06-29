@@ -10,8 +10,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from dpoint.reports.excel_reporter import escape_excel_formulas, save_excel_report
 from dpoint.reports.metrics import compute_rank_ic, compute_ranking_metrics
-from dpoint.reports.excel_reporter import save_excel_report, escape_excel_formulas
 
 
 def test_escape_excel_formulas():

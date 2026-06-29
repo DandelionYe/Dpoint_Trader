@@ -242,7 +242,11 @@ def run_single(args) -> int:
         config.search.metric,
     )
 
-    from dpoint.search.engine import create_evaluate_fn_single, random_search, save_search_state
+    from dpoint.search.engine import (
+        create_evaluate_fn_single,
+        random_search,
+        save_search_state,
+    )
 
     evaluate_fn = create_evaluate_fn_single(df, config)
     model_types = args.model_types or [args.model]
@@ -266,7 +270,12 @@ def run_single(args) -> int:
     # 5. 用最优配置训练最终模型并回测
     if state.best_config:
         logger.info("Training final model with best config...")
+        from dpoint.backtester.single_stock import (
+            backtest_from_dpoint,
+            compute_fold_metrics,
+        )
         from dpoint.core.config import FeatureConfig
+        from dpoint.core.tasks import resolve_label_spec
         from dpoint.features.pipeline import build_features_and_labels
         from dpoint.models.registry import make_model
         from dpoint.models.trainer import (
@@ -275,8 +284,6 @@ def run_single(args) -> int:
             train_pytorch_model,
             train_sklearn_model,
         )
-        from dpoint.backtester.single_stock import backtest_from_dpoint, compute_fold_metrics
-        from dpoint.core.tasks import resolve_label_spec
 
         best = state.best_config
         feat_cfg = best.get("feature", {})
@@ -447,7 +454,11 @@ def run_basket(args) -> int:
     logger.info("Experiment directory: %s", exp_dir)
 
     # 4. 随机搜索
-    from dpoint.search.engine import create_evaluate_fn_basket, random_search, save_search_state
+    from dpoint.search.engine import (
+        create_evaluate_fn_basket,
+        random_search,
+        save_search_state,
+    )
 
     evaluate_fn = create_evaluate_fn_basket(panel_df, config)
     model_types = args.model_types or [args.model]
@@ -472,6 +483,7 @@ def run_basket(args) -> int:
     if state.best_config:
         logger.info("Training final model with best config...")
         from dpoint.core.config import FeatureConfig
+        from dpoint.core.tasks import resolve_label_spec
         from dpoint.features.pipeline import build_features_and_labels
         from dpoint.models.registry import make_model
         from dpoint.models.trainer import (
@@ -481,7 +493,6 @@ def run_basket(args) -> int:
             train_sklearn_model,
         )
         from dpoint.reports.metrics import compute_ranking_metrics
-        from dpoint.core.tasks import resolve_label_spec
 
         best = state.best_config
         feat_cfg = best.get("feature", {})
@@ -677,8 +688,12 @@ def _run_resume_single(config, state, rng, data_path, parent_dir, args, logger) 
         df = df.reset_index()
 
     # 创建新实验目录
-    from dpoint.search.engine import create_evaluate_fn_single, random_search, save_search_state
     from dpoint.core.utils import create_experiment_dir
+    from dpoint.search.engine import (
+        create_evaluate_fn_single,
+        random_search,
+        save_search_state,
+    )
 
     exp_dir = create_experiment_dir(config.output_dir, prefix="single")
     logger.info("New experiment directory: %s (parent: %s)", exp_dir, parent_dir)
@@ -709,7 +724,9 @@ def _run_resume_single(config, state, rng, data_path, parent_dir, args, logger) 
     # 训练最终模型并回测
     if state.best_config:
         logger.info("Training final model with best config...")
+        from dpoint.backtester.single_stock import backtest_from_dpoint
         from dpoint.core.config import FeatureConfig
+        from dpoint.core.tasks import resolve_label_spec
         from dpoint.features.pipeline import build_features_and_labels
         from dpoint.models.registry import make_model
         from dpoint.models.trainer import (
@@ -718,8 +735,6 @@ def _run_resume_single(config, state, rng, data_path, parent_dir, args, logger) 
             train_pytorch_model,
             train_sklearn_model,
         )
-        from dpoint.backtester.single_stock import backtest_from_dpoint
-        from dpoint.core.tasks import resolve_label_spec
 
         best = state.best_config
         feat_cfg = best.get("feature", {})
@@ -848,8 +863,12 @@ def _run_resume_basket(config, state, rng, data_path, parent_dir, args, logger) 
     )
 
     # 创建新实验目录
-    from dpoint.search.engine import create_evaluate_fn_basket, random_search, save_search_state
     from dpoint.core.utils import create_experiment_dir
+    from dpoint.search.engine import (
+        create_evaluate_fn_basket,
+        random_search,
+        save_search_state,
+    )
 
     exp_dir = create_experiment_dir(config.output_dir, prefix="basket")
     logger.info("New experiment directory: %s (parent: %s)", exp_dir, parent_dir)
@@ -881,6 +900,7 @@ def _run_resume_basket(config, state, rng, data_path, parent_dir, args, logger) 
     if state.best_config:
         logger.info("Training final model with best config...")
         from dpoint.core.config import FeatureConfig
+        from dpoint.core.tasks import resolve_label_spec
         from dpoint.features.pipeline import build_features_and_labels
         from dpoint.models.registry import make_model
         from dpoint.models.trainer import (
@@ -890,7 +910,6 @@ def _run_resume_basket(config, state, rng, data_path, parent_dir, args, logger) 
             train_sklearn_model,
         )
         from dpoint.reports.metrics import compute_ranking_metrics
-        from dpoint.core.tasks import resolve_label_spec
 
         best = state.best_config
         feat_cfg = best.get("feature", {})

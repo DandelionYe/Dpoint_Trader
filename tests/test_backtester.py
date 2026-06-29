@@ -10,15 +10,15 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from dpoint.backtester.base import ExecutionStats, compute_risk_metrics
 from dpoint.backtester.execution import (
     apply_slippage,
-    calc_buy_shares,
     calc_buy_cost,
+    calc_buy_shares,
     calc_sell_proceeds,
     check_limit,
     execute_order,
 )
-from dpoint.backtester.base import ExecutionStats, compute_risk_metrics
 from dpoint.backtester.single_stock import backtest_from_dpoint, compute_fold_metrics
 
 

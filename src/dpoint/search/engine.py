@@ -157,6 +157,10 @@ def create_evaluate_fn_single(
     创建单股模式的评估函数。
     完整流程：特征构建 → Walk-Forward 切分 → 训练 → 预测 → 回测 → 指标。
     """
+    from dpoint.backtester.single_stock import (
+        backtest_from_dpoint,
+        compute_fold_metrics,
+    )
     from dpoint.core.config import FeatureConfig
     from dpoint.features.pipeline import build_features_and_labels
     from dpoint.models.registry import make_model
@@ -167,7 +171,6 @@ def create_evaluate_fn_single(
         train_sklearn_model,
     )
     from dpoint.splits.splitters import walkforward_splits
-    from dpoint.backtester.single_stock import backtest_from_dpoint, compute_fold_metrics
 
     def evaluate_fn(candidate: Dict[str, Any]) -> List[Dict[str, Any]]:
         model_cfg = candidate.get("model", {})

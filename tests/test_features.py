@@ -10,10 +10,14 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dpoint.features.groups import add_momentum_features, add_volatility_features, add_all_features
-from dpoint.features.labeler import build_label
-from dpoint.features.pipeline import build_features_and_labels, FeatureMeta
 from dpoint.core.config import FeatureConfig
+from dpoint.features.groups import (
+    add_all_features,
+    add_momentum_features,
+    add_volatility_features,
+)
+from dpoint.features.labeler import build_label
+from dpoint.features.pipeline import FeatureMeta, build_features_and_labels
 
 
 def test_momentum_features(sample_panel_df):

@@ -11,6 +11,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 
+from dpoint.backtester.base import ExecutionStats
 from dpoint.core.constants import (
     DEFAULT_BOARD_LOT,
     DEFAULT_BUY_COMMISSION_RATE,
@@ -23,7 +24,6 @@ from dpoint.core.constants import (
     DEFAULT_SELL_STAMP_DUTY_RATE,
     DEFAULT_SLIPPAGE_BPS,
 )
-from dpoint.backtester.base import ExecutionStats
 
 
 def apply_slippage(price: float, action: str, slippage_bps: float = DEFAULT_SLIPPAGE_BPS) -> float:

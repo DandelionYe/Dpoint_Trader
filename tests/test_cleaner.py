@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dpoint.data.cleaner import clean_ohlcv, DataReport
+from dpoint.data.cleaner import DataReport, clean_ohlcv
 
 
 def test_clean_basic(sample_single_df):
