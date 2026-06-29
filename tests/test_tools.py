@@ -1,5 +1,6 @@
 # test_tools.py
 """工具模块测试。"""
+
 import json
 import sys
 from pathlib import Path
@@ -31,11 +32,15 @@ def test_compare_runs(tmp_path):
             json.dump(config, f)
 
         # 创建模拟 Excel 报告
-        metrics_df = pd.DataFrame([{
-            "total_return": 0.1 + i * 0.05,
-            "sharpe": 1.2 + i * 0.3,
-            "max_drawdown": -0.05 - i * 0.01,
-        }])
+        metrics_df = pd.DataFrame(
+            [
+                {
+                    "total_return": 0.1 + i * 0.05,
+                    "sharpe": 1.2 + i * 0.3,
+                    "max_drawdown": -0.05 - i * 0.01,
+                }
+            ]
+        )
         metrics_df.to_excel(exp_dir / "report.xlsx", sheet_name="RiskMetrics", index=False)
 
     df = compare_runs([tmp_path / "exp_001", tmp_path / "exp_002"])

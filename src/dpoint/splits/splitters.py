@@ -4,6 +4,7 @@
 来自 DpointTrader_deeplearning_Ver1.0/splitters.py，兼容单股/面板两种模式。
 支持 Walk-Forward / Embargo Walk-Forward / Nested Walk-Forward / Final Holdout。
 """
+
 from __future__ import annotations
 
 import logging
@@ -111,8 +112,13 @@ def walkforward_splits_with_embargo(
     date_col: str = "date",
 ) -> List[SplitResult]:
     """带 Embargo Gap 的 Walk-Forward 切分。"""
-    results = walkforward_splits(df, n_folds=n_folds, train_start_ratio=train_start_ratio,
-                                  min_rows=min_rows, date_col=date_col)
+    results = walkforward_splits(
+        df,
+        n_folds=n_folds,
+        train_start_ratio=train_start_ratio,
+        min_rows=min_rows,
+        date_col=date_col,
+    )
     if embargo_days <= 0:
         return results
 
@@ -131,9 +137,13 @@ def walkforward_splits_with_embargo(
             embargo_days=embargo_days,
             fold_id=r.spec.fold_id,
         )
-        embargo_results.append(SplitResult(train_dates=new_train, val_dates=r.val_dates, spec=new_spec))
+        embargo_results.append(
+            SplitResult(train_dates=new_train, val_dates=r.val_dates, spec=new_spec)
+        )
 
-    logger.info("Embargo walk-forward: %d folds, embargo=%d days", len(embargo_results), embargo_days)
+    logger.info(
+        "Embargo walk-forward: %d folds, embargo=%d days", len(embargo_results), embargo_days
+    )
     return embargo_results
 
 
@@ -161,7 +171,9 @@ def final_holdout_split(
     search_dates = dates[:split_idx]
     holdout_dates = dates[split_idx:]
 
-    logger.info("Holdout split: %d search dates, %d holdout dates", len(search_dates), len(holdout_dates))
+    logger.info(
+        "Holdout split: %d search dates, %d holdout dates", len(search_dates), len(holdout_dates)
+    )
     return search_dates, holdout_dates
 
 

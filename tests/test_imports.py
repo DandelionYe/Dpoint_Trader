@@ -1,5 +1,6 @@
 # test_imports.py
 """基本导入测试：验证所有模块可以正常导入。"""
+
 import sys
 from pathlib import Path
 
@@ -12,6 +13,7 @@ def test_core_imports():
     from dpoint.core.tasks import LabelSpec, resolve_label_spec
     from dpoint.core.contract import DataContract, RunContract
     from dpoint.core.utils import set_global_seed
+
     assert COL_CLOSE == "close_qfq"
     assert COL_DATE == "date"
 
@@ -56,6 +58,7 @@ def test_cli_imports():
 
 def test_config_roundtrip():
     from dpoint.core.config import RunConfig
+
     cfg = RunConfig(mode="single", data_path="test.xlsx")
     d = cfg.to_dict()
     cfg2 = RunConfig.from_dict(d)

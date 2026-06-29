@@ -1,5 +1,6 @@
 # test_cli.py
 """CLI 端到端集成测试。"""
+
 import sys
 from pathlib import Path
 
@@ -12,17 +13,22 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 def test_cli_parser():
     from dpoint.cli.main import build_parser
+
     parser = build_parser()
 
     # single 模式
-    args = parser.parse_args(["single", "--data_path", "test.xlsx", "--model", "logreg", "--runs", "10"])
+    args = parser.parse_args(
+        ["single", "--data_path", "test.xlsx", "--model", "logreg", "--runs", "10"]
+    )
     assert args.command == "single"
     assert args.data_path == "test.xlsx"
     assert args.model == "logreg"
     assert args.runs == 10
 
     # basket 模式
-    args = parser.parse_args(["basket", "--basket_path", "data/basket_1/", "--model", "lstm", "--top_k", "3"])
+    args = parser.parse_args(
+        ["basket", "--basket_path", "data/basket_1/", "--model", "lstm", "--top_k", "3"]
+    )
     assert args.command == "basket"
     assert args.basket_path == "data/basket_1/"
     assert args.top_k == 3
@@ -39,16 +45,25 @@ def test_cli_single_end_to_end(tmp_path, sample_single_df):
     output_dir = str(tmp_path / "output")
 
     # 运行（少量候选加速，用 sgd 避免 scipy 崩溃）
-    exit_code = main([
-        "single",
-        "--data_path", str(data_path),
-        "--model", "sgd",
-        "--runs", "8",
-        "--n_rounds", "2",
-        "--metric", "pnl",
-        "--output", output_dir,
-        "--model_types", "sgd",
-    ])
+    exit_code = main(
+        [
+            "single",
+            "--data_path",
+            str(data_path),
+            "--model",
+            "sgd",
+            "--runs",
+            "8",
+            "--n_rounds",
+            "2",
+            "--metric",
+            "pnl",
+            "--output",
+            output_dir,
+            "--model_types",
+            "sgd",
+        ]
+    )
 
     assert exit_code == 0
 
@@ -74,13 +89,20 @@ def test_cli_single_with_csv(tmp_path, sample_single_df):
 
     output_dir = str(tmp_path / "output")
 
-    exit_code = main([
-        "single",
-        "--data_path", str(data_path),
-        "--model", "sgd",
-        "--runs", "4",
-        "--n_rounds", "2",
-        "--output", output_dir,
-    ])
+    exit_code = main(
+        [
+            "single",
+            "--data_path",
+            str(data_path),
+            "--model",
+            "sgd",
+            "--runs",
+            "4",
+            "--n_rounds",
+            "2",
+            "--output",
+            output_dir,
+        ]
+    )
 
     assert exit_code == 0

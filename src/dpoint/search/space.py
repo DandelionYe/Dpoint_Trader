@@ -3,6 +3,7 @@
 搜索空间定义与采样。
 合并自两个项目的搜索空间设计。
 """
+
 from __future__ import annotations
 
 import logging

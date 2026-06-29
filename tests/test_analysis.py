@@ -1,5 +1,6 @@
 # test_analysis.py
 """分析模块测试：校准、解释、Regime。"""
+
 import sys
 from pathlib import Path
 
@@ -12,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 def test_calibration_none():
     from dpoint.analysis.calibration import ProbabilityCalibrator
+
     cal = ProbabilityCalibrator("none")
     cal.fit(np.array([0, 1, 0, 1]), np.array([0.2, 0.8, 0.3, 0.7]))
     result = cal.predict(np.array([0.4, 0.6]))
@@ -20,6 +22,7 @@ def test_calibration_none():
 
 def test_calibration_platt():
     from dpoint.analysis.calibration import ProbabilityCalibrator
+
     rng = np.random.Generator(np.random.PCG64(42))
     n = 200
     y_true = rng.integers(0, 2, n)
@@ -34,6 +37,7 @@ def test_calibration_platt():
 
 def test_calibration_isotonic():
     from dpoint.analysis.calibration import ProbabilityCalibrator
+
     rng = np.random.Generator(np.random.PCG64(42))
     n = 200
     y_true = rng.integers(0, 2, n)
@@ -50,6 +54,7 @@ def test_calibration_isotonic():
 
 def test_calibration_evaluate():
     from dpoint.analysis.calibration import ProbabilityCalibrator
+
     rng = np.random.Generator(np.random.PCG64(42))
     n = 100
     y_true = rng.integers(0, 2, n)
@@ -79,6 +84,7 @@ def test_permutation_importance():
 
 def test_regime_detector():
     from dpoint.analysis.regime import RegimeDetector
+
     rng = np.random.Generator(np.random.PCG64(42))
     close = pd.Series(100 * np.exp(np.cumsum(rng.normal(0.001, 0.02, 200))))
 
@@ -92,6 +98,7 @@ def test_regime_detector():
 
 def test_regime_trend():
     from dpoint.analysis.regime import RegimeDetector
+
     close = pd.Series(np.linspace(100, 150, 100))  # 稳定上涨
     detector = RegimeDetector()
     regimes = detector.detect_trend(close)
@@ -101,12 +108,15 @@ def test_regime_trend():
 
 def test_regime_metrics():
     from dpoint.analysis.regime import compute_regime_metrics
+
     rng = np.random.Generator(np.random.PCG64(42))
     n = 200
     close = pd.Series(100 * np.exp(np.cumsum(rng.normal(0.001, 0.02, n))))
-    equity = pd.DataFrame({
-        "total_equity": 100000 * (1 + np.cumsum(rng.normal(0.001, 0.01, n))),
-    })
+    equity = pd.DataFrame(
+        {
+            "total_equity": 100000 * (1 + np.cumsum(rng.normal(0.001, 0.01, n))),
+        }
+    )
 
     metrics = compute_regime_metrics(equity, close, regime_mode="trend")
     assert isinstance(metrics, dict)

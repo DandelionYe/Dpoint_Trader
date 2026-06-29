@@ -4,6 +4,7 @@
 来自 DpointTrader_deeplearning_Ver1.0/cross_sectional_features.py。
 篮子模式独占，单股模式跳过。
 """
+
 from __future__ import annotations
 
 import logging
@@ -49,10 +50,16 @@ def add_cross_sectional_features(
                 result_df[new_col] = result_df.groupby(date_col)[feat].rank(pct=True)
             elif method == "zscore":
                 grouped = result_df.groupby(date_col)[feat]
-                result_df[new_col] = (result_df[feat] - grouped.transform("mean")) / grouped.transform("std").replace(0, np.nan)
+                result_df[new_col] = (
+                    result_df[feat] - grouped.transform("mean")
+                ) / grouped.transform("std").replace(0, np.nan)
             new_feature_names.append(new_col)
 
-    logger.info("Added %d cross-sectional features (%d base × %d methods)",
-                len(new_feature_names), len(feature_names), len(methods))
+    logger.info(
+        "Added %d cross-sectional features (%d base × %d methods)",
+        len(new_feature_names),
+        len(feature_names),
+        len(methods),
+    )
 
     return result_df, new_feature_names

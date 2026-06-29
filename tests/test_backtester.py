@@ -1,5 +1,6 @@
 # test_backtester.py
 """回测引擎测试。"""
+
 import sys
 from pathlib import Path
 
@@ -10,8 +11,12 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from dpoint.backtester.execution import (
-    apply_slippage, calc_buy_shares, calc_buy_cost, calc_sell_proceeds,
-    check_limit, execute_order,
+    apply_slippage,
+    calc_buy_shares,
+    calc_buy_cost,
+    calc_sell_proceeds,
+    check_limit,
+    execute_order,
 )
 from dpoint.backtester.base import ExecutionStats, compute_risk_metrics
 from dpoint.backtester.single_stock import backtest_from_dpoint, compute_fold_metrics
@@ -71,9 +76,12 @@ def test_backtest_basic(sample_single_df):
     dpoint = pd.Series(rng.uniform(0.3, 0.7, n), index=sample_single_df["date"].values)
 
     result = backtest_from_dpoint(
-        sample_single_df, dpoint,
-        buy_threshold=0.55, sell_threshold=0.45,
-        confirm_days=1, max_hold_days=10,
+        sample_single_df,
+        dpoint,
+        buy_threshold=0.55,
+        sell_threshold=0.45,
+        confirm_days=1,
+        max_hold_days=10,
     )
 
     assert result.equity_curve is not None
@@ -88,9 +96,12 @@ def test_backtest_with_take_profit(sample_single_df):
     dpoint = pd.Series(np.full(n, 0.8), index=sample_single_df["date"].values)
 
     result = backtest_from_dpoint(
-        sample_single_df, dpoint,
-        buy_threshold=0.55, sell_threshold=0.2,
-        take_profit=0.05, max_hold_days=50,
+        sample_single_df,
+        dpoint,
+        buy_threshold=0.55,
+        sell_threshold=0.2,
+        take_profit=0.05,
+        max_hold_days=50,
     )
 
     if not result.trades.empty:
@@ -112,9 +123,11 @@ def test_compute_fold_metrics(sample_single_df):
 
 def test_risk_metrics():
     """风险指标计算测试。"""
-    equity = pd.DataFrame({
-        "total_equity": [100000, 101000, 102000, 101500, 103000],
-    })
+    equity = pd.DataFrame(
+        {
+            "total_equity": [100000, 101000, 102000, 101500, 103000],
+        }
+    )
     metrics = compute_risk_metrics(equity, initial_cash=100000)
     assert "total_return" in metrics
     assert "sharpe" in metrics

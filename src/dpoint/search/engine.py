@@ -3,6 +3,7 @@
 统一搜索引擎 + 完整评估流程。
 Phase 3：集成特征→模型→回测→指标的完整 evaluate_fn。
 """
+
 from __future__ import annotations
 
 import json
@@ -18,8 +19,11 @@ import pandas as pd
 from dpoint.core.config import RunConfig
 from dpoint.search.metrics import MetricFn, get_metric_fn
 from dpoint.search.space import (
-    ALL_MODELS, mutate_model_config, sample_feature_config,
-    sample_model_config, sample_trade_config,
+    ALL_MODELS,
+    mutate_model_config,
+    sample_feature_config,
+    sample_model_config,
+    sample_trade_config,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,6 +32,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CandidateResult:
     """单个候选配置的评估结果。"""
+
     config: Dict[str, Any]
     score: float
     fold_results: List[Dict[str, Any]]
@@ -38,6 +43,7 @@ class CandidateResult:
 @dataclass
 class SearchState:
     """搜索状态。"""
+
     best_score: float = -np.inf
     best_config: Dict[str, Any] = field(default_factory=dict)
     top_k_pool: List[CandidateResult] = field(default_factory=list)
@@ -47,7 +53,9 @@ class SearchState:
     n_errors: int = 0
 
 
-def update_top_k(pool: List[CandidateResult], candidate: CandidateResult, k: int = 10) -> List[CandidateResult]:
+def update_top_k(
+    pool: List[CandidateResult], candidate: CandidateResult, k: int = 10
+) -> List[CandidateResult]:
     """更新 Top-K 候选池。"""
     pool.append(candidate)
     pool.sort(key=lambda c: c.score, reverse=True)
@@ -57,6 +65,7 @@ def update_top_k(pool: List[CandidateResult], candidate: CandidateResult, k: int
 # ==============================================================
 # 搜索状态序列化（用于迭代训练 / resume）
 # ==============================================================
+
 
 def _json_default(obj: Any) -> Any:
     """JSON 序列化辅助：处理 numpy 类型和无穷值。"""
@@ -104,7 +113,12 @@ def save_search_state(
         "rng_state": rng.bit_generator.state,
     }
     path.write_text(json.dumps(data, indent=2, default=_json_default), encoding="utf-8")
-    logger.info("Search state saved: %s (%d evaluated, top-K size %d)", path, state.n_evaluated, len(state.top_k_pool))
+    logger.info(
+        "Search state saved: %s (%d evaluated, top-K size %d)",
+        path,
+        state.n_evaluated,
+        len(state.top_k_pool),
+    )
 
 
 def load_search_state(path: Path) -> Tuple[SearchState, dict]:
@@ -128,7 +142,9 @@ def load_search_state(path: Path) -> Tuple[SearchState, dict]:
 
     logger.info(
         "Search state loaded: %d evaluated, best_score=%.4f, top-K size %d",
-        state.n_evaluated, state.best_score, len(state.top_k_pool),
+        state.n_evaluated,
+        state.best_score,
+        len(state.top_k_pool),
     )
     return state, rng_state
 
@@ -145,8 +161,10 @@ def create_evaluate_fn_single(
     from dpoint.features.pipeline import build_features_and_labels
     from dpoint.models.registry import make_model
     from dpoint.models.trainer import (
-        predict_pytorch_model, predict_sklearn_model,
-        train_pytorch_model, train_sklearn_model,
+        predict_pytorch_model,
+        predict_sklearn_model,
+        train_pytorch_model,
+        train_sklearn_model,
     )
     from dpoint.splits.splitters import walkforward_splits
     from dpoint.backtester.single_stock import backtest_from_dpoint, compute_fold_metrics
@@ -170,7 +188,9 @@ def create_evaluate_fn_single(
 
         # 构建特征
         df_feat, y, meta = build_features_and_labels(
-            df.copy(), feature_config, mode="single",
+            df.copy(),
+            feature_config,
+            mode="single",
         )
 
         if meta.n_samples < config.split.min_rows:
@@ -181,7 +201,8 @@ def create_evaluate_fn_single(
 
         # Walk-Forward 切分
         splits = walkforward_splits(
-            df_feat, n_folds=config.split.n_folds,
+            df_feat,
+            n_folds=config.split.n_folds,
             train_start_ratio=config.split.train_start_ratio,
             min_rows=config.split.min_rows,
         )
@@ -191,6 +212,7 @@ def create_evaluate_fn_single(
 
         fold_results = []
         from dpoint.core.tasks import resolve_label_spec
+
         label_spec = resolve_label_spec()
 
         for split in splits:
@@ -218,7 +240,11 @@ def create_evaluate_fn_single(
                     proba = predict_sklearn_model(model, X_val)
                 else:
                     train_pytorch_model(
-                        model, X_train, y_train, X_val, y_val,
+                        model,
+                        X_train,
+                        y_train,
+                        X_val,
+                        y_val,
                         epochs=model_cfg.get("epochs", 50),
                         batch_size=model_cfg.get("batch_size", 256),
                         learning_rate=model_cfg.get("learning_rate", 1e-3),
@@ -236,7 +262,8 @@ def create_evaluate_fn_single(
 
             # 回测
             bt_result = backtest_from_dpoint(
-                val_df, dpoint,
+                val_df,
+                dpoint,
                 buy_threshold=trade_cfg.get("buy_threshold", 0.55),
                 sell_threshold=trade_cfg.get("sell_threshold", 0.45),
                 confirm_days=trade_cfg.get("confirm_days", 1),
@@ -267,8 +294,10 @@ def create_evaluate_fn_basket(
     from dpoint.features.pipeline import build_features_and_labels
     from dpoint.models.registry import make_model
     from dpoint.models.trainer import (
-        predict_pytorch_model, predict_sklearn_model,
-        train_pytorch_model, train_sklearn_model,
+        predict_pytorch_model,
+        predict_sklearn_model,
+        train_pytorch_model,
+        train_sklearn_model,
     )
     from dpoint.splits.splitters import walkforward_splits
 
@@ -288,7 +317,9 @@ def create_evaluate_fn_basket(
         )
 
         df_feat, y, meta = build_features_and_labels(
-            panel_df.copy(), feature_config, mode="basket",
+            panel_df.copy(),
+            feature_config,
+            mode="basket",
         )
 
         if meta.n_samples < config.split.min_rows:
@@ -298,7 +329,8 @@ def create_evaluate_fn_basket(
         model_type = model_cfg.get("model_type", "logreg")
 
         splits = walkforward_splits(
-            df_feat, n_folds=config.split.n_folds,
+            df_feat,
+            n_folds=config.split.n_folds,
             train_start_ratio=config.split.train_start_ratio,
             min_rows=config.split.min_rows,
         )
@@ -308,6 +340,7 @@ def create_evaluate_fn_basket(
 
         fold_results = []
         from dpoint.core.tasks import resolve_label_spec
+
         label_spec = resolve_label_spec()
 
         for split in splits:
@@ -333,7 +366,11 @@ def create_evaluate_fn_basket(
                 else:
                     y_val = y[val_mask].values
                     train_pytorch_model(
-                        model, X_train, y_train, X_val, y_val,
+                        model,
+                        X_train,
+                        y_train,
+                        X_val,
+                        y_val,
                         epochs=model_cfg.get("epochs", 50),
                         batch_size=model_cfg.get("batch_size", 256),
                         learning_rate=model_cfg.get("learning_rate", 1e-3),
@@ -355,7 +392,9 @@ def create_evaluate_fn_basket(
             for dt, group in val_df.groupby("date"):
                 if len(group) < 5:
                     continue
-                true_rank = group["close_qfq"].rank(pct=True) if "close_qfq" in group.columns else None
+                true_rank = (
+                    group["close_qfq"].rank(pct=True) if "close_qfq" in group.columns else None
+                )
                 pred_rank = group["pred_score"].rank(pct=True)
                 # 用次日收益率的 rank 作为真实 rank
                 if "label" in group.columns:
@@ -366,11 +405,13 @@ def create_evaluate_fn_basket(
 
             avg_rank_ic = float(np.mean(rank_ics)) if rank_ics else 0.0
 
-            fold_results.append({
-                "fold_id": split.spec.fold_id,
-                "rank_ic": avg_rank_ic,
-                "n_samples": len(val_df),
-            })
+            fold_results.append(
+                {
+                    "fold_id": split.spec.fold_id,
+                    "rank_ic": avg_rank_ic,
+                    "n_samples": len(val_df),
+                }
+            )
 
         return fold_results
 
@@ -412,7 +453,9 @@ def random_search(
         state = initial_state
         logger.info(
             "Resuming search: %d previously evaluated, best_score=%.4f, top-K pool size %d",
-            state.n_evaluated, state.best_score, len(state.top_k_pool),
+            state.n_evaluated,
+            state.best_score,
+            len(state.top_k_pool),
         )
     else:
         state = SearchState()
@@ -423,7 +466,9 @@ def random_search(
 
     logger.info(
         "Starting search: %d candidates, %d rounds, metric=%s",
-        n_candidates, n_rounds, config.search.metric,
+        n_candidates,
+        n_rounds,
+        config.search.metric,
     )
 
     for round_idx in range(n_rounds):
@@ -456,7 +501,10 @@ def random_search(
 
                 score = metric_fn(fold_results)
                 result = CandidateResult(
-                    config=candidate, score=score, fold_results=fold_results, elapsed_sec=elapsed,
+                    config=candidate,
+                    score=score,
+                    fold_results=fold_results,
+                    elapsed_sec=elapsed,
                 )
                 state.all_results.append(result)
                 state.n_evaluated += 1
@@ -476,7 +524,10 @@ def random_search(
 
     logger.info(
         "Search complete: %d evaluated, %d skipped, %d errors, best_score=%.4f",
-        state.n_evaluated, state.n_skipped, state.n_errors, state.best_score,
+        state.n_evaluated,
+        state.n_skipped,
+        state.n_errors,
+        state.best_score,
     )
 
     return state, rng

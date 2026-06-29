@@ -3,6 +3,7 @@
 Excel 报告生成器。
 合并自两个项目的 reporter.py，统一输出格式。
 """
+
 from __future__ import annotations
 
 import json
@@ -102,7 +103,9 @@ def save_excel_report(
 
         # Sheet 7: Config
         if config:
-            config_df = pd.DataFrame([{"key": k, "value": str(v)} for k, v in _flatten_dict(config).items()])
+            config_df = pd.DataFrame(
+                [{"key": k, "value": str(v)} for k, v in _flatten_dict(config).items()]
+            )
             config_df = escape_excel_formulas(config_df)
             config_df.to_excel(writer, sheet_name="Config", index=False)
             _auto_width(writer.sheets["Config"], config_df)

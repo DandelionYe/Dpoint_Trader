@@ -3,6 +3,7 @@
 概率校准模块：Platt Scaling / Isotonic Regression。
 来自 Ver2.0/calibration.py。
 """
+
 from __future__ import annotations
 
 import logging
@@ -49,7 +50,9 @@ class ProbabilityCalibrator:
         y_prob = y_prob[mask]
 
         if len(y_true) < 10:
-            logger.warning("Too few samples for calibration (%d), falling back to none", len(y_true))
+            logger.warning(
+                "Too few samples for calibration (%d), falling back to none", len(y_true)
+            )
             self.method = "none"
             self._is_fitted = True
             return self
@@ -58,6 +61,7 @@ class ProbabilityCalibrator:
             # Platt Scaling: 用 sigmoid 拟合，避免 scipy L-BFGS-B 崩溃
             # 使用简单的 numpy 实现: logit(p) = a * log(p/(1-p)) + b
             from sklearn.isotonic import IsotonicRegression
+
             # 退化为 isotonic（更稳定），或用 numpy 手动实现 Platt
             p = np.clip(y_prob, 1e-7, 1 - 1e-7)
             logit = np.log(p / (1 - p))
@@ -69,6 +73,7 @@ class ProbabilityCalibrator:
 
         elif self.method == "isotonic":
             from sklearn.isotonic import IsotonicRegression
+
             self.calibrator = IsotonicRegression(y_min=0, y_max=1, out_of_bounds="clip")
             self.calibrator.fit(y_prob, y_true)
 
@@ -112,6 +117,7 @@ class ProbabilityCalibrator:
         # Brier Score
         try:
             from sklearn.metrics import brier_score_loss
+
             metrics["brier_score"] = float(brier_score_loss(y_true, y_prob))
         except Exception:
             pass

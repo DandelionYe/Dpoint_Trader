@@ -3,6 +3,7 @@
 统一配置 dataclass 体系。
 合并自两个项目的参数设计，用子命令区分 single/basket 模式。
 """
+
 from __future__ import annotations
 
 import json
@@ -14,6 +15,7 @@ from typing import Any, Optional
 @dataclass
 class FeatureConfig:
     """特征工程配置。"""
+
     windows: list[int] = field(default_factory=lambda: [5, 10, 20])
     use_momentum: bool = True
     use_volatility: bool = True
@@ -32,6 +34,7 @@ class FeatureConfig:
 @dataclass
 class ModelConfig:
     """模型配置。"""
+
     model_type: str = "lstm"  # logreg / sgd / xgb / mlp / lstm / gru / cnn / transformer
     hidden_dim: int = 64
     num_layers: int = 2
@@ -57,6 +60,7 @@ class ModelConfig:
 @dataclass
 class TradeConfig:
     """交易参数配置。"""
+
     buy_threshold: float = 0.52
     sell_threshold: float = 0.48
     confirm_days: int = 1
@@ -74,6 +78,7 @@ class TradeConfig:
 @dataclass
 class SearchConfig:
     """搜索配置。"""
+
     n_candidates: int = 100
     n_rounds: int = 4
     explore_ratio: float = 0.3
@@ -87,6 +92,7 @@ class SearchConfig:
 @dataclass
 class SplitConfig:
     """样本划分配置。"""
+
     mode: str = "wf"  # wf / wf_embargo / nested_wf
     n_folds: int = 4
     train_start_ratio: float = 0.5
@@ -102,6 +108,7 @@ class SplitConfig:
 @dataclass
 class PortfolioConfig:
     """组合构建配置（篮子模式独占）。"""
+
     top_k: int = 5
     weighting: str = "equal"  # equal / score / vol_inv
     max_weight: float = 0.20
@@ -115,6 +122,7 @@ class PortfolioConfig:
 @dataclass
 class RunConfig:
     """统一运行配置。"""
+
     mode: str = "single"  # single / basket
     data_path: str = ""  # 单股模式：Excel 文件路径
     basket_path: str = ""  # 篮子模式：basket 目录路径
@@ -146,6 +154,11 @@ class RunConfig:
         split = SplitConfig(**d.pop("split", {}))
         portfolio = PortfolioConfig(**d.pop("portfolio", {}))
         return cls(
-            feature=feature, model=model, trade=trade,
-            search=search, split=split, portfolio=portfolio, **d,
+            feature=feature,
+            model=model,
+            trade=trade,
+            search=search,
+            split=split,
+            portfolio=portfolio,
+            **d,
         )

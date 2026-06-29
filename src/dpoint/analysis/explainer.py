@@ -3,6 +3,7 @@
 特征解释模块：Permutation Importance / SHAP（可选）。
 来自 Ver2.0/explainer.py。
 """
+
 from __future__ import annotations
 
 import logging
@@ -73,13 +74,17 @@ def permutation_importance(
 
             scores.append(base_score - score_perm)
 
-        results.append({
-            "feature": feat_name,
-            "importance_mean": float(np.mean(scores)),
-            "importance_std": float(np.std(scores)),
-        })
+        results.append(
+            {
+                "feature": feat_name,
+                "importance_mean": float(np.mean(scores)),
+                "importance_std": float(np.std(scores)),
+            }
+        )
 
-    df = pd.DataFrame(results).sort_values("importance_mean", ascending=False).reset_index(drop=True)
+    df = (
+        pd.DataFrame(results).sort_values("importance_mean", ascending=False).reset_index(drop=True)
+    )
     return df
 
 
@@ -123,13 +128,17 @@ def shap_importance(
         results = []
         for i, name in enumerate(feature_names):
             if i < vals.shape[1]:
-                results.append({
-                    "feature": name,
-                    "shap_mean": float(np.abs(vals[:, i]).mean()),
-                    "shap_std": float(np.abs(vals[:, i]).std()),
-                })
+                results.append(
+                    {
+                        "feature": name,
+                        "shap_mean": float(np.abs(vals[:, i]).mean()),
+                        "shap_std": float(np.abs(vals[:, i]).std()),
+                    }
+                )
 
-        return pd.DataFrame(results).sort_values("shap_mean", ascending=False).reset_index(drop=True)
+        return (
+            pd.DataFrame(results).sort_values("shap_mean", ascending=False).reset_index(drop=True)
+        )
 
     except Exception as e:
         logger.warning("SHAP computation failed: %s", e)

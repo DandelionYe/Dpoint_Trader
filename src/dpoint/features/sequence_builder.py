@@ -4,6 +4,7 @@
 来自 DpointTrader_deeplearning_Ver1.0/sequence_builder.py。
 供 LSTM/GRU/CNN/Transformer 使用。
 """
+
 from __future__ import annotations
 
 import logging
@@ -48,7 +49,7 @@ class PanelSequenceStore:
             for i in range(seq_len - 1, len(group)):
                 if np.isnan(y[i]):
                     continue
-                window = X[i - seq_len + 1: i + 1]
+                window = X[i - seq_len + 1 : i + 1]
                 if np.any(np.isnan(window)):
                     continue
                 self._sequences.append(window)
@@ -61,7 +62,9 @@ class PanelSequenceStore:
 
         logger.info(
             "Built %d sequences (seq_len=%d) from %d tickers",
-            len(self._sequences), seq_len, panel_df[ticker_col].nunique(),
+            len(self._sequences),
+            seq_len,
+            panel_df[ticker_col].nunique(),
         )
 
     def __len__(self) -> int:
@@ -94,5 +97,10 @@ def build_sequences_from_panel(
 ) -> PanelSequenceStore:
     """从面板数据构建序列存储。"""
     return PanelSequenceStore(
-        panel_df, feature_names, label_col, seq_len, date_col, ticker_col,
+        panel_df,
+        feature_names,
+        label_col,
+        seq_len,
+        date_col,
+        ticker_col,
     )

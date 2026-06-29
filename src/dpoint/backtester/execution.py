@@ -3,6 +3,7 @@
 A股执行引擎：涨跌停、T+1、佣金、滑点、手数约束。
 来自 Ver2.0 和 Ver1.0 的执行层实现。
 """
+
 from __future__ import annotations
 
 from typing import Tuple
@@ -11,10 +12,16 @@ import numpy as np
 import pandas as pd
 
 from dpoint.core.constants import (
-    DEFAULT_BOARD_LOT, DEFAULT_BUY_COMMISSION_RATE, DEFAULT_LIMIT_DOWN_PCT,
-    DEFAULT_LIMIT_DOWN_PCT_ST, DEFAULT_LIMIT_UP_PCT, DEFAULT_LIMIT_UP_PCT_ST,
-    DEFAULT_MAX_PARTICIPATION_RATE, DEFAULT_SELL_COMMISSION_RATE,
-    DEFAULT_SELL_STAMP_DUTY_RATE, DEFAULT_SLIPPAGE_BPS,
+    DEFAULT_BOARD_LOT,
+    DEFAULT_BUY_COMMISSION_RATE,
+    DEFAULT_LIMIT_DOWN_PCT,
+    DEFAULT_LIMIT_DOWN_PCT_ST,
+    DEFAULT_LIMIT_UP_PCT,
+    DEFAULT_LIMIT_UP_PCT_ST,
+    DEFAULT_MAX_PARTICIPATION_RATE,
+    DEFAULT_SELL_COMMISSION_RATE,
+    DEFAULT_SELL_STAMP_DUTY_RATE,
+    DEFAULT_SLIPPAGE_BPS,
 )
 from dpoint.backtester.base import ExecutionStats
 
@@ -28,7 +35,9 @@ def apply_slippage(price: float, action: str, slippage_bps: float = DEFAULT_SLIP
 
 
 def check_limit(
-    open_price: float, prev_close: float, action: str,
+    open_price: float,
+    prev_close: float,
+    action: str,
     limit_up_pct: float = DEFAULT_LIMIT_UP_PCT,
     limit_down_pct: float = DEFAULT_LIMIT_DOWN_PCT,
 ) -> Tuple[bool, str]:
@@ -45,7 +54,9 @@ def check_limit(
 
 
 def calc_buy_shares(
-    cash: float, price: float, commission_rate: float = DEFAULT_BUY_COMMISSION_RATE,
+    cash: float,
+    price: float,
+    commission_rate: float = DEFAULT_BUY_COMMISSION_RATE,
     board_lot: int = DEFAULT_BOARD_LOT,
 ) -> int:
     """计算可买入手数（100股整数倍）。"""
@@ -56,13 +67,16 @@ def calc_buy_shares(
     return (max_shares // board_lot) * board_lot
 
 
-def calc_buy_cost(shares: int, price: float, commission_rate: float = DEFAULT_BUY_COMMISSION_RATE) -> float:
+def calc_buy_cost(
+    shares: int, price: float, commission_rate: float = DEFAULT_BUY_COMMISSION_RATE
+) -> float:
     """计算买入总成本。"""
     return shares * price * (1 + commission_rate)
 
 
 def calc_sell_proceeds(
-    shares: int, price: float,
+    shares: int,
+    price: float,
     commission_rate: float = DEFAULT_SELL_COMMISSION_RATE,
     stamp_duty: float = DEFAULT_SELL_STAMP_DUTY_RATE,
 ) -> float:

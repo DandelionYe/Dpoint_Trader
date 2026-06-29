@@ -3,6 +3,7 @@
 特征工程统一编排入口。
 兼容单股/面板两种模式：单股模式退化为单 ticker 面板。
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FeatureMeta:
     """特征元数据。"""
+
     feature_names: List[str] = field(default_factory=list)
     ts_feature_names: List[str] = field(default_factory=list)  # 时序特征
     cs_feature_names: List[str] = field(default_factory=list)  # 横截面特征
@@ -82,15 +84,21 @@ def build_features_and_labels(
     cs_feature_names = []
     if mode == "basket" and config.include_cross_section:
         df, cs_feature_names = add_cross_sectional_features(
-            df, ts_feature_names, date_col=date_col, ticker_col=ticker_col,
+            df,
+            ts_feature_names,
+            date_col=date_col,
+            ticker_col=ticker_col,
         )
 
     all_feature_names = ts_feature_names + cs_feature_names
 
     # 3. 标签
     y = build_label(
-        df, close_col=close_col, ticker_col=ticker_col,
-        label_mode=label_mode, horizon_days=horizon_days,
+        df,
+        close_col=close_col,
+        ticker_col=ticker_col,
+        label_mode=label_mode,
+        horizon_days=horizon_days,
     )
 
     # 4. 过滤 NaN 标签
@@ -124,7 +132,11 @@ def build_features_and_labels(
 
     logger.info(
         "Features built: %d samples, %d features (%d ts + %d cs), %d tickers",
-        meta.n_samples, meta.n_features, len(ts_feature_names), len(cs_feature_names), n_tickers,
+        meta.n_samples,
+        meta.n_features,
+        len(ts_feature_names),
+        len(cs_feature_names),
+        n_tickers,
     )
 
     return df, y, meta

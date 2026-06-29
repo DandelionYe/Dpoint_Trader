@@ -3,6 +3,7 @@
 市场状态检测与分层评估模块。
 来自 Ver2.0/regime.py。
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RegimeConfig:
     """Regime 检测参数。"""
+
     ma_short: int = 5
     ma_long: int = 20
     vol_window: int = 20
@@ -50,7 +52,9 @@ class RegimeDetector:
     def detect_volatility(self, close: pd.Series) -> pd.Series:
         """检测波动率状态。"""
         returns = close.pct_change()
-        vol = returns.rolling(self.config.vol_window, min_periods=self.config.vol_window).std() * np.sqrt(252)
+        vol = returns.rolling(
+            self.config.vol_window, min_periods=self.config.vol_window
+        ).std() * np.sqrt(252)
 
         def classify(v):
             if np.isnan(v):

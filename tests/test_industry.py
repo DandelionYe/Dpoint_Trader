@@ -1,4 +1,5 @@
 """IndustryDB 多维度查询接口的单元测试。"""
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -3,6 +3,7 @@
 多次运行结果对比工具。
 来自两个项目的 compare_runs.py。
 """
+
 from __future__ import annotations
 
 import json
@@ -63,9 +64,17 @@ def compare_runs(
     """
     if metrics is None:
         metrics = [
-            "total_return", "annual_return", "sharpe", "sortino",
-            "max_drawdown", "calmar", "win_rate", "n_trades",
-            "rank_ic_mean", "rank_ic_ir", "topk_return_mean",
+            "total_return",
+            "annual_return",
+            "sharpe",
+            "sortino",
+            "max_drawdown",
+            "calmar",
+            "win_rate",
+            "n_trades",
+            "rank_ic_mean",
+            "rank_ic_ir",
+            "topk_return_mean",
         ]
 
     rows = []
@@ -125,6 +134,7 @@ def print_comparison(df: pd.DataFrame) -> None:
     """打印对比表格。"""
     try:
         from tabulate import tabulate
+
         print(tabulate(df, headers="keys", tablefmt="grid", showindex=False))
     except ImportError:
         print(df.to_string(index=False))

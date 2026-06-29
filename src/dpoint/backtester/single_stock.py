@@ -3,6 +3,7 @@
 单股回测引擎：全仓/空仓切换模式。
 来自 Ver2.0 的 backtester_engine.py，简化但保留核心逻辑。
 """
+
 from __future__ import annotations
 
 import logging
@@ -12,13 +13,21 @@ import numpy as np
 import pandas as pd
 
 from dpoint.core.constants import (
-    DEFAULT_BUY_COMMISSION_RATE, DEFAULT_LIMIT_DOWN_PCT, DEFAULT_LIMIT_UP_PCT,
-    DEFAULT_SELL_COMMISSION_RATE, DEFAULT_SELL_STAMP_DUTY_RATE, DEFAULT_SLIPPAGE_BPS,
+    DEFAULT_BUY_COMMISSION_RATE,
+    DEFAULT_LIMIT_DOWN_PCT,
+    DEFAULT_LIMIT_UP_PCT,
+    DEFAULT_SELL_COMMISSION_RATE,
+    DEFAULT_SELL_STAMP_DUTY_RATE,
+    DEFAULT_SLIPPAGE_BPS,
 )
 from dpoint.backtester.base import BacktestResult, ExecutionStats, compute_risk_metrics
 from dpoint.backtester.execution import (
-    apply_slippage, calc_buy_cost, calc_buy_shares, calc_sell_proceeds,
-    check_limit, execute_order,
+    apply_slippage,
+    calc_buy_cost,
+    calc_buy_shares,
+    calc_sell_proceeds,
+    check_limit,
+    execute_order,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,8 +57,12 @@ def build_signal_frame(
 
     # confirm_days 连续确认
     if confirm_days > 1:
-        df["buy_confirmed"] = (df["raw_buy_signal"].rolling(confirm_days).sum() == confirm_days).astype(int)
-        df["sell_confirmed"] = (df["raw_sell_signal"].rolling(confirm_days).sum() == confirm_days).astype(int)
+        df["buy_confirmed"] = (
+            df["raw_buy_signal"].rolling(confirm_days).sum() == confirm_days
+        ).astype(int)
+        df["sell_confirmed"] = (
+            df["raw_sell_signal"].rolling(confirm_days).sum() == confirm_days
+        ).astype(int)
     else:
         df["buy_confirmed"] = df["raw_buy_signal"]
         df["sell_confirmed"] = df["raw_sell_signal"]
@@ -153,7 +166,9 @@ def backtest_from_dpoint(
 
         # 执行
         if action == "BUY":
-            can_exec, reason = check_limit(open_price, prev_close, "BUY", limit_up_pct, limit_down_pct)
+            can_exec, reason = check_limit(
+                open_price, prev_close, "BUY", limit_up_pct, limit_down_pct
+            )
             if can_exec:
                 exec_price = apply_slippage(open_price, "BUY", slippage_bps)
                 max_shares = calc_buy_shares(cash, exec_price, commission_rate_buy)
@@ -166,10 +181,16 @@ def backtest_from_dpoint(
                         hold_days = 0
                         slippage_cost = abs(exec_price - open_price) * max_shares
                         stats.add_fill(slippage_cost)
-                        trade_rows.append({
-                            "date": dt, "action": "BUY", "price": exec_price,
-                            "shares": max_shares, "cost": cost, "reason": "buy_signal",
-                        })
+                        trade_rows.append(
+                            {
+                                "date": dt,
+                                "action": "BUY",
+                                "price": exec_price,
+                                "shares": max_shares,
+                                "cost": cost,
+                                "reason": "buy_signal",
+                            }
+                        )
                     else:
                         stats.add_reject("现金不足")
                 else:
@@ -178,7 +199,9 @@ def backtest_from_dpoint(
                 stats.add_reject(reason)
 
         elif action == "SELL":
-            can_exec, reason = check_limit(open_price, prev_close, "SELL", limit_up_pct, limit_down_pct)
+            can_exec, reason = check_limit(
+                open_price, prev_close, "SELL", limit_up_pct, limit_down_pct
+            )
             if can_exec:
                 exec_price = apply_slippage(open_price, "SELL", slippage_bps)
                 proceeds = calc_sell_proceeds(shares, exec_price, commission_rate_sell, stamp_duty)
@@ -186,11 +209,17 @@ def backtest_from_dpoint(
                 cash += proceeds
                 slippage_cost = abs(exec_price - open_price) * shares
                 stats.add_fill(slippage_cost)
-                trade_rows.append({
-                    "date": dt, "action": "SELL", "price": exec_price,
-                    "shares": shares, "proceeds": proceeds, "pnl": pnl,
-                    "reason": sell_reason if 'sell_reason' in dir() else "sell_signal",
-                })
+                trade_rows.append(
+                    {
+                        "date": dt,
+                        "action": "SELL",
+                        "price": exec_price,
+                        "shares": shares,
+                        "proceeds": proceeds,
+                        "pnl": pnl,
+                        "reason": sell_reason if "sell_reason" in dir() else "sell_signal",
+                    }
+                )
                 shares = 0
                 entry_price = 0.0
                 hold_days = 0
@@ -199,13 +228,15 @@ def backtest_from_dpoint(
 
         # 每日净值快照
         equity = cash + shares * close_price
-        equity_rows.append({
-            "date": dt,
-            "cash": cash,
-            "shares": shares,
-            "close_price": close_price,
-            "total_equity": equity,
-        })
+        equity_rows.append(
+            {
+                "date": dt,
+                "cash": cash,
+                "shares": shares,
+                "close_price": close_price,
+                "total_equity": equity,
+            }
+        )
 
     # 组装结果
     equity_curve = pd.DataFrame(equity_rows)
@@ -213,7 +244,9 @@ def backtest_from_dpoint(
 
     if not equity_curve.empty:
         equity_curve["cum_max_equity"] = equity_curve["total_equity"].cummax()
-        equity_curve["drawdown"] = equity_curve["total_equity"] / equity_curve["cum_max_equity"] - 1.0
+        equity_curve["drawdown"] = (
+            equity_curve["total_equity"] / equity_curve["cum_max_equity"] - 1.0
+        )
 
     risk_metrics = compute_risk_metrics(equity_curve, initial_cash)
 
@@ -227,7 +260,9 @@ def backtest_from_dpoint(
             risk_metrics["win_rate"] = round(wins / total, 4) if total > 0 else 0.0
             gross_profit = sell_trades.loc[sell_trades["pnl"] > 0, "pnl"].sum()
             gross_loss = abs(sell_trades.loc[sell_trades["pnl"] < 0, "pnl"].sum())
-            risk_metrics["profit_factor"] = round(gross_profit / gross_loss, 4) if gross_loss > 0 else float("inf")
+            risk_metrics["profit_factor"] = (
+                round(gross_profit / gross_loss, 4) if gross_loss > 0 else float("inf")
+            )
 
     return BacktestResult(
         equity_curve=equity_curve,

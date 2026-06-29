@@ -3,6 +3,7 @@
 统一训练循环：支持 sklearn 和 PyTorch 模型。
 来自 Ver1.0 的自动 batch 调优和 AMP 支持。
 """
+
 from __future__ import annotations
 
 import logging
@@ -63,14 +64,18 @@ def train_pytorch_model(
 
     model = model.to(dev)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=3)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.5, patience=3
+    )
     criterion = nn.BCEWithLogitsLoss()
 
     # 数据准备
     X_t = torch.as_tensor(X_train, dtype=torch.float32)
     y_t = torch.as_tensor(y_train, dtype=torch.float32)
     dataset = TensorDataset(X_t, y_t)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=(dev.type == "cuda"))
+    loader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=True, pin_memory=(dev.type == "cuda")
+    )
 
     X_v = y_v = None
     if X_val is not None and y_val is not None:

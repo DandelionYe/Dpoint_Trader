@@ -3,6 +3,7 @@
 实验契约系统：确保 Continue 模式下的数据/特征/训练契约兼容性。
 来自 DpointTrader_deeplearning_Ver1.0/experiment_contract.py。
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -63,13 +64,12 @@ def compute_data_hash(df: pd.DataFrame) -> str:
     """计算 DataFrame 的稳定哈希值。"""
     sort_cols = [c for c in ["date", "ticker"] if c in df.columns]
     sorted_df = df.sort_values(sort_cols).reset_index(drop=True) if sort_cols else df
-    return hashlib.sha256(
-        pd.util.hash_pandas_object(sorted_df).values.tobytes()
-    ).hexdigest()
+    return hashlib.sha256(pd.util.hash_pandas_object(sorted_df).values.tobytes()).hexdigest()
 
 
 def compute_feature_schema_hash(
-    feature_names: list[str], extra: Optional[Dict[str, Any]] = None,
+    feature_names: list[str],
+    extra: Optional[Dict[str, Any]] = None,
 ) -> str:
     payload = {"feature_names": list(feature_names), "extra": extra or {}}
     return _stable_hash(payload)
@@ -119,7 +119,8 @@ def build_run_contract(
         feature=FeatureContract(
             feature_names=feature_names,
             feature_schema_hash=compute_feature_schema_hash(
-                feature_names, extra={"seq_len": seq_len, "include_cross_section": include_cross_section},
+                feature_names,
+                extra={"seq_len": seq_len, "include_cross_section": include_cross_section},
             ),
             include_cross_section=include_cross_section,
             seq_len=int(seq_len) if seq_len is not None else None,

@@ -3,6 +3,7 @@
 HTML 报告生成器（可选，依赖 plotly）。
 来自 Ver1.0 的 html_reporter.py。
 """
+
 from __future__ import annotations
 
 import logging
@@ -39,39 +40,62 @@ def save_html_report(
         import plotly.graph_objects as go
         from plotly.subplots import make_subplots
     except ImportError:
-        logger.warning("plotly not installed, skipping HTML report. Install with: pip install plotly")
+        logger.warning(
+            "plotly not installed, skipping HTML report. Install with: pip install plotly"
+        )
         return Path(output_path)
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     fig = make_subplots(
-        rows=2, cols=1,
+        rows=2,
+        cols=1,
         subplot_titles=["Equity Curve", "Drawdown"],
         vertical_spacing=0.1,
         row_heights=[0.7, 0.3],
     )
 
     # 净值曲线
-    if equity_curve is not None and not equity_curve.empty and "total_equity" in equity_curve.columns:
+    if (
+        equity_curve is not None
+        and not equity_curve.empty
+        and "total_equity" in equity_curve.columns
+    ):
         dates = equity_curve["date"] if "date" in equity_curve.columns else equity_curve.index
         fig.add_trace(
-            go.Scatter(x=dates, y=equity_curve["total_equity"], name="Strategy", line=dict(color="blue")),
-            row=1, col=1,
+            go.Scatter(
+                x=dates, y=equity_curve["total_equity"], name="Strategy", line=dict(color="blue")
+            ),
+            row=1,
+            col=1,
         )
         # Buy & Hold 基准
         if "bnh_equity" in equity_curve.columns:
             fig.add_trace(
-                go.Scatter(x=dates, y=equity_curve["bnh_equity"], name="Buy & Hold", line=dict(color="gray", dash="dash")),
-                row=1, col=1,
+                go.Scatter(
+                    x=dates,
+                    y=equity_curve["bnh_equity"],
+                    name="Buy & Hold",
+                    line=dict(color="gray", dash="dash"),
+                ),
+                row=1,
+                col=1,
             )
 
     # 回撤
     if equity_curve is not None and "drawdown" in equity_curve.columns:
         dates = equity_curve["date"] if "date" in equity_curve.columns else equity_curve.index
         fig.add_trace(
-            go.Scatter(x=dates, y=equity_curve["drawdown"], name="Drawdown", fill="tozeroy", line=dict(color="red")),
-            row=2, col=1,
+            go.Scatter(
+                x=dates,
+                y=equity_curve["drawdown"],
+                name="Drawdown",
+                fill="tozeroy",
+                line=dict(color="red"),
+            ),
+            row=2,
+            col=1,
         )
 
     fig.update_layout(title=title, height=800, showlegend=True)

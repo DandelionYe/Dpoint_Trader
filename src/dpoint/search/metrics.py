@@ -3,6 +3,7 @@
 可配置的搜索目标函数。
 支持 PnL（回测净值）和 Rank IC（排名信息系数）两种模式。
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,15 +18,17 @@ logger = logging.getLogger(__name__)
 
 class MetricFn(Protocol):
     """搜索目标函数接口。"""
+
     def __call__(self, fold_results: List[Dict[str, Any]]) -> float: ...
 
 
 @dataclass
 class FoldResult:
     """单折回测结果。"""
+
     fold_id: int
     geom_mean_ratio: float = 0.0  # 几何均值净值比率
-    min_fold_ratio: float = 0.0   # 最差折比率
+    min_fold_ratio: float = 0.0  # 最差折比率
     n_trades: int = 0
     # Rank IC 相关
     rank_ic: float = 0.0
@@ -38,7 +41,9 @@ def pnl_metric(fold_results: List[Dict[str, Any]]) -> float:
     0.8 * 几何均值 + 0.2 * 最差折 - 交易频次惩罚
     """
     from dpoint.core.constants import (
-        LAMBDA_TRADE_PENALTY, MIN_CLOSED_TRADES_PER_FOLD, TARGET_CLOSED_TRADES_PER_FOLD,
+        LAMBDA_TRADE_PENALTY,
+        MIN_CLOSED_TRADES_PER_FOLD,
+        TARGET_CLOSED_TRADES_PER_FOLD,
     )
 
     if not fold_results:
@@ -56,7 +61,11 @@ def pnl_metric(fold_results: List[Dict[str, Any]]) -> float:
 
     # 交易频次惩罚
     avg_trades = float(np.mean(n_trades_list))
-    penalty = LAMBDA_TRADE_PENALTY * max(0, TARGET_CLOSED_TRADES_PER_FOLD - avg_trades) / TARGET_CLOSED_TRADES_PER_FOLD
+    penalty = (
+        LAMBDA_TRADE_PENALTY
+        * max(0, TARGET_CLOSED_TRADES_PER_FOLD - avg_trades)
+        / TARGET_CLOSED_TRADES_PER_FOLD
+    )
 
     score = 0.8 * geom_mean + 0.2 * min_fold - penalty
     return score

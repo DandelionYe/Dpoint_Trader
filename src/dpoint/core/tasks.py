@@ -3,6 +3,7 @@
 任务类型管理：LabelSpec / LossSpec / MetricSpec。
 来自 DpointTrader_deeplearning_Ver1.0/tasks.py，支持 binary/multiclass/regression。
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,8 +14,8 @@ import numpy as np
 
 @dataclass
 class LabelSpec:
-    task_type: str          # binary_classification / multiclass_classification / regression
-    label_mode: str         # binary_next_close_up / multiclass_N / regression_return
+    task_type: str  # binary_classification / multiclass_classification / regression
+    label_mode: str  # binary_next_close_up / multiclass_N / regression_return
     horizon_days: int = 1
     thresholds: Optional[dict] = None
     n_classes: Optional[int] = None
@@ -22,10 +23,10 @@ class LabelSpec:
 
 @dataclass
 class LossSpec:
-    loss_name: str          # bce_with_logits / cross_entropy / huber
+    loss_name: str  # bce_with_logits / cross_entropy / huber
     output_dim: int
     target_dtype: str
-    prediction_key: str     # proba_up / class_id / prediction
+    prediction_key: str  # proba_up / class_id / prediction
 
 
 @dataclass
@@ -109,11 +110,15 @@ def resolve_metric_spec(task_type: str, primary_metric: str = "auto") -> MetricS
 
     if task_type == "binary_classification":
         return MetricSpec(
-            primary_metric, ["rank_ic_mean", "auc", "logloss", "topk_return_mean"], True,
+            primary_metric,
+            ["rank_ic_mean", "auc", "logloss", "topk_return_mean"],
+            True,
         )
     if task_type == "multiclass_classification":
         return MetricSpec(
-            primary_metric, ["rank_ic_mean", "topk_return_mean", "macro_f1", "accuracy"], True,
+            primary_metric,
+            ["rank_ic_mean", "topk_return_mean", "macro_f1", "accuracy"],
+            True,
         )
     return MetricSpec(
         primary_metric,

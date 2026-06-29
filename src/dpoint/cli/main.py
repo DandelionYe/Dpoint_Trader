@@ -3,6 +3,7 @@
 统一 CLI 入口：dpoint single / dpoint basket 子命令。
 Phase 5：完整端到端流程。
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,12 +17,20 @@ from typing import Any, Dict
 import numpy as np
 
 from dpoint.core.config import (
-    FeatureConfig, ModelConfig, PortfolioConfig, RunConfig,
-    SearchConfig, SplitConfig, TradeConfig,
+    FeatureConfig,
+    ModelConfig,
+    PortfolioConfig,
+    RunConfig,
+    SearchConfig,
+    SplitConfig,
+    TradeConfig,
 )
 from dpoint.core.utils import (
-    compute_data_hash, create_experiment_dir, create_manifest,
-    save_config, set_global_seed,
+    compute_data_hash,
+    create_experiment_dir,
+    create_manifest,
+    save_config,
+    set_global_seed,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,9 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
     # === dpoint single ===
     single = subparsers.add_parser("single", help="单股策略模式")
     single.add_argument("--data_path", required=True, help="Excel/CSV 数据文件路径")
-    single.add_argument("--model", default="logreg",
-                        choices=["logreg", "sgd", "xgb", "mlp", "lstm", "gru", "cnn", "transformer"],
-                        help="模型类型")
+    single.add_argument(
+        "--model",
+        default="logreg",
+        choices=["logreg", "sgd", "xgb", "mlp", "lstm", "gru", "cnn", "transformer"],
+        help="模型类型",
+    )
     single.add_argument("--runs", type=int, default=100, help="搜索候选数")
     single.add_argument("--n_rounds", type=int, default=4, help="搜索轮数")
     single.add_argument("--metric", default="pnl", choices=["pnl", "rank_ic"], help="搜索目标函数")
@@ -51,30 +63,47 @@ def build_parser() -> argparse.ArgumentParser:
     single.add_argument("--device", default="auto", help="设备 (auto/cpu/cuda)")
     single.add_argument("--n_folds", type=int, default=4, help="Walk-Forward 折数")
     single.add_argument("--holdout_ratio", type=float, default=0.15, help="Holdout 比例")
-    single.add_argument("--model_types", nargs="+", default=None,
-                        help="搜索的模型类型列表（默认全部）")
-    single.add_argument("--config", default=None,
-                        help="JSON 配置文件路径（提供后忽略其他参数，直接使用文件中的完整配置）")
+    single.add_argument(
+        "--model_types", nargs="+", default=None, help="搜索的模型类型列表（默认全部）"
+    )
+    single.add_argument(
+        "--config",
+        default=None,
+        help="JSON 配置文件路径（提供后忽略其他参数，直接使用文件中的完整配置）",
+    )
 
     # === dpoint basket ===
     basket = subparsers.add_parser("basket", help="篮子/组合策略模式")
     basket.add_argument("--basket_path", required=True, help="篮子数据目录路径")
-    basket.add_argument("--model", default="logreg",
-                        choices=["logreg", "sgd", "xgb", "mlp", "lstm", "gru", "cnn", "transformer"],
-                        help="模型类型")
+    basket.add_argument(
+        "--model",
+        default="logreg",
+        choices=["logreg", "sgd", "xgb", "mlp", "lstm", "gru", "cnn", "transformer"],
+        help="模型类型",
+    )
     basket.add_argument("--runs", type=int, default=100, help="搜索候选数")
     basket.add_argument("--n_rounds", type=int, default=4, help="搜索轮数")
-    basket.add_argument("--metric", default="rank_ic", choices=["pnl", "rank_ic"], help="搜索目标函数")
+    basket.add_argument(
+        "--metric", default="rank_ic", choices=["pnl", "rank_ic"], help="搜索目标函数"
+    )
     basket.add_argument("--seed", type=int, default=42, help="随机种子")
     basket.add_argument("--output", default="output", help="输出目录")
     basket.add_argument("--device", default="auto", help="设备")
     basket.add_argument("--top_k", type=int, default=5, help="组合 Top-K 选股数")
-    basket.add_argument("--rebalance", default="daily", choices=["daily", "weekly", "monthly"], help="调仓频率")
-    basket.add_argument("--weighting", default="equal", choices=["equal", "score", "vol_inv"], help="权重方式")
+    basket.add_argument(
+        "--rebalance", default="daily", choices=["daily", "weekly", "monthly"], help="调仓频率"
+    )
+    basket.add_argument(
+        "--weighting", default="equal", choices=["equal", "score", "vol_inv"], help="权重方式"
+    )
     basket.add_argument("--n_folds", type=int, default=4, help="Walk-Forward 折数")
     basket.add_argument("--holdout_ratio", type=float, default=0.15, help="Holdout 比例")
-    basket.add_argument("--calendar_align", default="none",
-                        choices=["none", "inner", "outer", "majority"], help="日历对齐")
+    basket.add_argument(
+        "--calendar_align",
+        default="none",
+        choices=["none", "inner", "outer", "majority"],
+        help="日历对齐",
+    )
     basket.add_argument("--model_types", nargs="+", default=None, help="搜索的模型类型列表")
     basket.add_argument("--config", default=None, help="JSON 配置文件路径")
 
@@ -83,10 +112,15 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("experiment_dir", help="上次实验目录路径（如 output/single_002）")
     resume.add_argument("--runs", type=int, default=100, help="本轮搜索候选数")
     resume.add_argument("--n_rounds", type=int, default=4, help="本轮搜索轮数")
-    resume.add_argument("--metric", default=None, choices=["pnl", "rank_ic"],
-                        help="搜索目标函数（默认沿用上次配置）")
-    resume.add_argument("--seed", type=int, default=None,
-                        help="新随机种子（默认沿用上次 RNG 状态）")
+    resume.add_argument(
+        "--metric",
+        default=None,
+        choices=["pnl", "rank_ic"],
+        help="搜索目标函数（默认沿用上次配置）",
+    )
+    resume.add_argument(
+        "--seed", type=int, default=None, help="新随机种子（默认沿用上次 RNG 状态）"
+    )
     resume.add_argument("--output", default="output", help="输出目录")
     resume.add_argument("--device", default="auto", help="设备 (auto/cpu/cuda)")
     resume.add_argument("--model_types", nargs="+", default=None, help="搜索的模型类型列表")
@@ -124,7 +158,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     # dpoint fetch list-industries
     fetch_list_ind = fetch_sub.add_parser("list-industries", help="列出可用行业")
-    fetch_list_ind.add_argument("--level", type=int, choices=[1, 2, 3, 4], help="行业级别（默认全部）")
+    fetch_list_ind.add_argument(
+        "--level", type=int, choices=[1, 2, 3, 4], help="行业级别（默认全部）"
+    )
 
     # dpoint fetch list-provinces
     fetch_sub.add_parser("list-provinces", help="列出可用省份")
@@ -165,7 +201,9 @@ def run_single(args) -> int:
             seed=args.seed,
             device=args.device,
             model=ModelConfig(model_type=args.model),
-            search=SearchConfig(n_candidates=args.runs, n_rounds=args.n_rounds, metric=args.metric, seed=args.seed),
+            search=SearchConfig(
+                n_candidates=args.runs, n_rounds=args.n_rounds, metric=args.metric, seed=args.seed
+            ),
             split=SplitConfig(n_folds=args.n_folds, holdout_ratio=args.holdout_ratio),
         )
 
@@ -176,9 +214,11 @@ def run_single(args) -> int:
     data_path = Path(args.data_path)
     if data_path.suffix in (".xlsx", ".xls"):
         from dpoint.data.excel_loader import load_stock_excel
+
         df, report = load_stock_excel(data_path)
     elif data_path.suffix == ".csv":
         from dpoint.data.csv_loader import load_single_csv
+
         df, report = load_single_csv(data_path)
     else:
         logger.error("Unsupported file format: %s", data_path.suffix)
@@ -195,8 +235,12 @@ def run_single(args) -> int:
     logger.info("Experiment directory: %s", exp_dir)
 
     # 4. 随机搜索
-    logger.info("Starting search: %d candidates, %d rounds, metric=%s",
-                config.search.n_candidates, config.search.n_rounds, config.search.metric)
+    logger.info(
+        "Starting search: %d candidates, %d rounds, metric=%s",
+        config.search.n_candidates,
+        config.search.n_rounds,
+        config.search.metric,
+    )
 
     from dpoint.search.engine import create_evaluate_fn_single, random_search, save_search_state
 
@@ -212,8 +256,12 @@ def run_single(args) -> int:
     # 保存搜索状态（供迭代训练使用）
     save_search_state(state, rng, exp_dir / "search_state.json")
 
-    logger.info("Search completed in %.1fs: %d evaluated, best_score=%.4f",
-                elapsed, state.n_evaluated, state.best_score)
+    logger.info(
+        "Search completed in %.1fs: %d evaluated, best_score=%.4f",
+        elapsed,
+        state.n_evaluated,
+        state.best_score,
+    )
 
     # 5. 用最优配置训练最终模型并回测
     if state.best_config:
@@ -221,7 +269,12 @@ def run_single(args) -> int:
         from dpoint.core.config import FeatureConfig
         from dpoint.features.pipeline import build_features_and_labels
         from dpoint.models.registry import make_model
-        from dpoint.models.trainer import predict_pytorch_model, predict_sklearn_model, train_pytorch_model, train_sklearn_model
+        from dpoint.models.trainer import (
+            predict_pytorch_model,
+            predict_sklearn_model,
+            train_pytorch_model,
+            train_sklearn_model,
+        )
         from dpoint.backtester.single_stock import backtest_from_dpoint, compute_fold_metrics
         from dpoint.core.tasks import resolve_label_spec
 
@@ -253,25 +306,33 @@ def run_single(args) -> int:
             model = train_sklearn_model(model, X_all, y_all)
             proba = predict_sklearn_model(model, X_all)
         else:
-            train_pytorch_model(model, X_all, y_all, epochs=model_cfg.get("epochs", 50),
-                                batch_size=model_cfg.get("batch_size", 256),
-                                learning_rate=model_cfg.get("learning_rate", 1e-3),
-                                device=config.device)
+            train_pytorch_model(
+                model,
+                X_all,
+                y_all,
+                epochs=model_cfg.get("epochs", 50),
+                batch_size=model_cfg.get("batch_size", 256),
+                learning_rate=model_cfg.get("learning_rate", 1e-3),
+                device=config.device,
+            )
             proba = predict_pytorch_model(model, X_all, device=config.device)
 
         dpoint = __import__("pandas").Series(proba, index=df_feat["date"].values)
         bt_result = backtest_from_dpoint(
-            df_feat, dpoint,
+            df_feat,
+            dpoint,
             buy_threshold=trade_cfg.get("buy_threshold", 0.55),
             sell_threshold=trade_cfg.get("sell_threshold", 0.45),
             confirm_days=trade_cfg.get("confirm_days", 1),
             max_hold_days=trade_cfg.get("max_hold_days", 20),
         )
 
-        logger.info("Final model: total_return=%.4f, sharpe=%.4f, max_dd=%.4f",
-                     bt_result.risk_metrics.get("total_return", 0),
-                     bt_result.risk_metrics.get("sharpe", 0),
-                     bt_result.risk_metrics.get("max_drawdown", 0))
+        logger.info(
+            "Final model: total_return=%.4f, sharpe=%.4f, max_dd=%.4f",
+            bt_result.risk_metrics.get("total_return", 0),
+            bt_result.risk_metrics.get("sharpe", 0),
+            bt_result.risk_metrics.get("max_drawdown", 0),
+        )
 
         # 6. 保存报告
         from dpoint.reports.excel_reporter import save_excel_report
@@ -297,6 +358,7 @@ def run_single(args) -> int:
         # 尝试保存 HTML 报告
         try:
             from dpoint.reports.html_reporter import save_html_report
+
             save_html_report(
                 exp_dir / "report.html",
                 equity_curve=bt_result.equity_curve,
@@ -322,7 +384,9 @@ def run_single(args) -> int:
 
     # 总是保存配置和 manifest
     save_config(exp_dir, config.to_dict())
-    create_manifest(exp_dir, config=config.to_dict(), data_hash=compute_data_hash(df), seed=config.seed)
+    create_manifest(
+        exp_dir, config=config.to_dict(), data_hash=compute_data_hash(df), seed=config.seed
+    )
     logger.info("Outputs saved to: %s", exp_dir)
 
     return 0
@@ -345,9 +409,13 @@ def run_basket(args) -> int:
             seed=args.seed,
             device=args.device,
             model=ModelConfig(model_type=args.model),
-            search=SearchConfig(n_candidates=args.runs, n_rounds=args.n_rounds, metric=args.metric, seed=args.seed),
+            search=SearchConfig(
+                n_candidates=args.runs, n_rounds=args.n_rounds, metric=args.metric, seed=args.seed
+            ),
             split=SplitConfig(n_folds=args.n_folds, holdout_ratio=args.holdout_ratio),
-            portfolio=PortfolioConfig(top_k=args.top_k, weighting=args.weighting, rebalance_freq=args.rebalance),
+            portfolio=PortfolioConfig(
+                top_k=args.top_k, weighting=args.weighting, rebalance_freq=args.rebalance
+            ),
         )
 
     set_global_seed(config.seed)
@@ -364,10 +432,15 @@ def run_basket(args) -> int:
     from dpoint.data.basket_loader import load_basket_folder
 
     panel_df, basket_report = load_basket_folder(
-        basket_path, calendar_align=args.calendar_align,
+        basket_path,
+        calendar_align=args.calendar_align,
     )
-    logger.info("Loaded basket: %d rows, %d tickers, %d dates",
-                len(panel_df), basket_report.n_files_loaded, panel_df["date"].nunique())
+    logger.info(
+        "Loaded basket: %d rows, %d tickers, %d dates",
+        len(panel_df),
+        basket_report.n_files_loaded,
+        panel_df["date"].nunique(),
+    )
 
     # 3. 创建实验目录
     exp_dir = create_experiment_dir(config.output_dir, prefix="basket")
@@ -388,8 +461,12 @@ def run_basket(args) -> int:
     # 保存搜索状态（供迭代训练使用）
     save_search_state(state, rng, exp_dir / "search_state.json")
 
-    logger.info("Search completed in %.1fs: %d evaluated, best_score=%.4f",
-                elapsed, state.n_evaluated, state.best_score)
+    logger.info(
+        "Search completed in %.1fs: %d evaluated, best_score=%.4f",
+        elapsed,
+        state.n_evaluated,
+        state.best_score,
+    )
 
     # 5. 用最优配置训练最终模型并计算因子指标
     if state.best_config:
@@ -397,7 +474,12 @@ def run_basket(args) -> int:
         from dpoint.core.config import FeatureConfig
         from dpoint.features.pipeline import build_features_and_labels
         from dpoint.models.registry import make_model
-        from dpoint.models.trainer import predict_pytorch_model, predict_sklearn_model, train_pytorch_model, train_sklearn_model
+        from dpoint.models.trainer import (
+            predict_pytorch_model,
+            predict_sklearn_model,
+            train_pytorch_model,
+            train_sklearn_model,
+        )
         from dpoint.reports.metrics import compute_ranking_metrics
         from dpoint.core.tasks import resolve_label_spec
 
@@ -428,21 +510,35 @@ def run_basket(args) -> int:
             model = train_sklearn_model(model, X_all, y_all)
             proba = predict_sklearn_model(model, X_all)
         else:
-            train_pytorch_model(model, X_all, y_all, epochs=model_cfg.get("epochs", 50),
-                                batch_size=model_cfg.get("batch_size", 256),
-                                learning_rate=model_cfg.get("learning_rate", 1e-3),
-                                device=config.device)
+            train_pytorch_model(
+                model,
+                X_all,
+                y_all,
+                epochs=model_cfg.get("epochs", 50),
+                batch_size=model_cfg.get("batch_size", 256),
+                learning_rate=model_cfg.get("learning_rate", 1e-3),
+                device=config.device,
+            )
             proba = predict_pytorch_model(model, X_all, device=config.device)
 
         # 计算因子指标
         df_feat["pred_score"] = proba
         df_feat["label"] = y.values
-        ranking_metrics = compute_ranking_metrics(df_feat, score_col="pred_score", label_col="label")
+        ranking_metrics = compute_ranking_metrics(
+            df_feat, score_col="pred_score", label_col="label"
+        )
 
-        logger.info("Rank IC: mean=%.4f, std=%.4f, IR=%.4f",
-                     ranking_metrics.rank_ic_mean or 0, ranking_metrics.rank_ic_std or 0, ranking_metrics.rank_ic_ir or 0)
-        logger.info("Top-K return: mean=%.6f, annual=%.4f",
-                     ranking_metrics.topk_return_mean or 0, ranking_metrics.topk_return_annual or 0)
+        logger.info(
+            "Rank IC: mean=%.4f, std=%.4f, IR=%.4f",
+            ranking_metrics.rank_ic_mean or 0,
+            ranking_metrics.rank_ic_std or 0,
+            ranking_metrics.rank_ic_ir or 0,
+        )
+        logger.info(
+            "Top-K return: mean=%.6f, annual=%.4f",
+            ranking_metrics.topk_return_mean or 0,
+            ranking_metrics.topk_return_annual or 0,
+        )
 
         # 6. 保存报告
         from dpoint.reports.excel_reporter import save_excel_report
@@ -498,10 +594,13 @@ def run_resume(args) -> int:
     # 1. 加载搜索状态
     state_path = exp_dir / "search_state.json"
     if not state_path.exists():
-        logger.error("search_state.json not found in %s. Was this run created with the old version?", exp_dir)
+        logger.error(
+            "search_state.json not found in %s. Was this run created with the old version?", exp_dir
+        )
         return 1
 
     from dpoint.search.engine import load_search_state
+
     state, rng_state = load_search_state(state_path)
 
     # 2. 加载原始配置
@@ -562,9 +661,11 @@ def _run_resume_single(config, state, rng, data_path, parent_dir, args, logger) 
     logger.info("Loading data: %s", data_path)
     if data_path.suffix in (".xlsx", ".xls"):
         from dpoint.data.excel_loader import load_stock_excel
+
         df, report = load_stock_excel(data_path)
     elif data_path.suffix == ".csv":
         from dpoint.data.csv_loader import load_single_csv
+
         df, report = load_single_csv(data_path)
     else:
         logger.error("Unsupported file format: %s", data_path.suffix)
@@ -588,7 +689,8 @@ def _run_resume_single(config, state, rng, data_path, parent_dir, args, logger) 
 
     t0 = time.time()
     state, rng = random_search(
-        config, evaluate_fn,
+        config,
+        evaluate_fn,
         model_types=model_types,
         initial_state=state,
         rng=rng,
@@ -597,8 +699,12 @@ def _run_resume_single(config, state, rng, data_path, parent_dir, args, logger) 
 
     save_search_state(state, rng, exp_dir / "search_state.json")
 
-    logger.info("Search completed in %.1fs: %d evaluated, best_score=%.4f",
-                elapsed, state.n_evaluated, state.best_score)
+    logger.info(
+        "Search completed in %.1fs: %d evaluated, best_score=%.4f",
+        elapsed,
+        state.n_evaluated,
+        state.best_score,
+    )
 
     # 训练最终模型并回测
     if state.best_config:
@@ -606,7 +712,12 @@ def _run_resume_single(config, state, rng, data_path, parent_dir, args, logger) 
         from dpoint.core.config import FeatureConfig
         from dpoint.features.pipeline import build_features_and_labels
         from dpoint.models.registry import make_model
-        from dpoint.models.trainer import predict_pytorch_model, predict_sklearn_model, train_pytorch_model, train_sklearn_model
+        from dpoint.models.trainer import (
+            predict_pytorch_model,
+            predict_sklearn_model,
+            train_pytorch_model,
+            train_sklearn_model,
+        )
         from dpoint.backtester.single_stock import backtest_from_dpoint
         from dpoint.core.tasks import resolve_label_spec
 
@@ -638,25 +749,33 @@ def _run_resume_single(config, state, rng, data_path, parent_dir, args, logger) 
             model = train_sklearn_model(model, X_all, y_all)
             proba = predict_sklearn_model(model, X_all)
         else:
-            train_pytorch_model(model, X_all, y_all, epochs=model_cfg.get("epochs", 50),
-                                batch_size=model_cfg.get("batch_size", 256),
-                                learning_rate=model_cfg.get("learning_rate", 1e-3),
-                                device=config.device)
+            train_pytorch_model(
+                model,
+                X_all,
+                y_all,
+                epochs=model_cfg.get("epochs", 50),
+                batch_size=model_cfg.get("batch_size", 256),
+                learning_rate=model_cfg.get("learning_rate", 1e-3),
+                device=config.device,
+            )
             proba = predict_pytorch_model(model, X_all, device=config.device)
 
         dpoint = _pd.Series(proba, index=df_feat["date"].values)
         bt_result = backtest_from_dpoint(
-            df_feat, dpoint,
+            df_feat,
+            dpoint,
             buy_threshold=trade_cfg.get("buy_threshold", 0.52),
             sell_threshold=trade_cfg.get("sell_threshold", 0.48),
             confirm_days=trade_cfg.get("confirm_days", 1),
             max_hold_days=trade_cfg.get("max_hold_days", 20),
         )
 
-        logger.info("Final model: total_return=%.4f, sharpe=%.4f, max_dd=%.4f",
-                     bt_result.risk_metrics.get("total_return", 0),
-                     bt_result.risk_metrics.get("sharpe", 0),
-                     bt_result.risk_metrics.get("max_drawdown", 0))
+        logger.info(
+            "Final model: total_return=%.4f, sharpe=%.4f, max_dd=%.4f",
+            bt_result.risk_metrics.get("total_return", 0),
+            bt_result.risk_metrics.get("sharpe", 0),
+            bt_result.risk_metrics.get("max_drawdown", 0),
+        )
 
         # 保存报告
         from dpoint.reports.excel_reporter import save_excel_report
@@ -681,6 +800,7 @@ def _run_resume_single(config, state, rng, data_path, parent_dir, args, logger) 
 
         try:
             from dpoint.reports.html_reporter import save_html_report
+
             save_html_report(
                 exp_dir / "report.html",
                 equity_curve=bt_result.equity_curve,
@@ -717,10 +837,15 @@ def _run_resume_basket(config, state, rng, data_path, parent_dir, args, logger) 
     from dpoint.data.basket_loader import load_basket_folder
 
     panel_df, basket_report = load_basket_folder(
-        str(data_path), calendar_align="none",
+        str(data_path),
+        calendar_align="none",
     )
-    logger.info("Loaded basket: %d rows, %d tickers, %d dates",
-                len(panel_df), basket_report.n_files_loaded, panel_df["date"].nunique())
+    logger.info(
+        "Loaded basket: %d rows, %d tickers, %d dates",
+        len(panel_df),
+        basket_report.n_files_loaded,
+        panel_df["date"].nunique(),
+    )
 
     # 创建新实验目录
     from dpoint.search.engine import create_evaluate_fn_basket, random_search, save_search_state
@@ -735,7 +860,8 @@ def _run_resume_basket(config, state, rng, data_path, parent_dir, args, logger) 
 
     t0 = time.time()
     state, rng = random_search(
-        config, evaluate_fn,
+        config,
+        evaluate_fn,
         model_types=model_types,
         initial_state=state,
         rng=rng,
@@ -744,8 +870,12 @@ def _run_resume_basket(config, state, rng, data_path, parent_dir, args, logger) 
 
     save_search_state(state, rng, exp_dir / "search_state.json")
 
-    logger.info("Search completed in %.1fs: %d evaluated, best_score=%.4f",
-                elapsed, state.n_evaluated, state.best_score)
+    logger.info(
+        "Search completed in %.1fs: %d evaluated, best_score=%.4f",
+        elapsed,
+        state.n_evaluated,
+        state.best_score,
+    )
 
     # 训练最终模型并计算因子指标
     if state.best_config:
@@ -753,7 +883,12 @@ def _run_resume_basket(config, state, rng, data_path, parent_dir, args, logger) 
         from dpoint.core.config import FeatureConfig
         from dpoint.features.pipeline import build_features_and_labels
         from dpoint.models.registry import make_model
-        from dpoint.models.trainer import predict_pytorch_model, predict_sklearn_model, train_pytorch_model, train_sklearn_model
+        from dpoint.models.trainer import (
+            predict_pytorch_model,
+            predict_sklearn_model,
+            train_pytorch_model,
+            train_sklearn_model,
+        )
         from dpoint.reports.metrics import compute_ranking_metrics
         from dpoint.core.tasks import resolve_label_spec
 
@@ -784,20 +919,34 @@ def _run_resume_basket(config, state, rng, data_path, parent_dir, args, logger) 
             model = train_sklearn_model(model, X_all, y_all)
             proba = predict_sklearn_model(model, X_all)
         else:
-            train_pytorch_model(model, X_all, y_all, epochs=model_cfg.get("epochs", 50),
-                                batch_size=model_cfg.get("batch_size", 256),
-                                learning_rate=model_cfg.get("learning_rate", 1e-3),
-                                device=config.device)
+            train_pytorch_model(
+                model,
+                X_all,
+                y_all,
+                epochs=model_cfg.get("epochs", 50),
+                batch_size=model_cfg.get("batch_size", 256),
+                learning_rate=model_cfg.get("learning_rate", 1e-3),
+                device=config.device,
+            )
             proba = predict_pytorch_model(model, X_all, device=config.device)
 
         df_feat["pred_score"] = proba
         df_feat["label"] = y.values
-        ranking_metrics = compute_ranking_metrics(df_feat, score_col="pred_score", label_col="label")
+        ranking_metrics = compute_ranking_metrics(
+            df_feat, score_col="pred_score", label_col="label"
+        )
 
-        logger.info("Rank IC: mean=%.4f, std=%.4f, IR=%.4f",
-                     ranking_metrics.rank_ic_mean or 0, ranking_metrics.rank_ic_std or 0, ranking_metrics.rank_ic_ir or 0)
-        logger.info("Top-K return: mean=%.6f, annual=%.4f",
-                     ranking_metrics.topk_return_mean or 0, ranking_metrics.topk_return_annual or 0)
+        logger.info(
+            "Rank IC: mean=%.4f, std=%.4f, IR=%.4f",
+            ranking_metrics.rank_ic_mean or 0,
+            ranking_metrics.rank_ic_std or 0,
+            ranking_metrics.rank_ic_ir or 0,
+        )
+        logger.info(
+            "Top-K return: mean=%.6f, annual=%.4f",
+            ranking_metrics.topk_return_mean or 0,
+            ranking_metrics.topk_return_annual or 0,
+        )
 
         # 保存报告
         from dpoint.reports.excel_reporter import save_excel_report

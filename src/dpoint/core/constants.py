@@ -25,12 +25,23 @@ COL_TURNOVER = "turnover_rate"
 
 # 必需列（单股模式）
 REQUIRED_COLS_SINGLE: list[str] = [
-    COL_DATE, COL_OPEN, COL_HIGH, COL_LOW, COL_CLOSE, COL_VOLUME,
+    COL_DATE,
+    COL_OPEN,
+    COL_HIGH,
+    COL_LOW,
+    COL_CLOSE,
+    COL_VOLUME,
 ]
 
 # 必需列（面板模式）
 REQUIRED_COLS_PANEL: list[str] = [
-    COL_DATE, COL_TICKER, COL_OPEN, COL_HIGH, COL_LOW, COL_CLOSE, COL_VOLUME,
+    COL_DATE,
+    COL_TICKER,
+    COL_OPEN,
+    COL_HIGH,
+    COL_LOW,
+    COL_CLOSE,
+    COL_VOLUME,
 ]
 
 # 可选列

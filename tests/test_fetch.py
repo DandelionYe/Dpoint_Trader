@@ -1,4 +1,5 @@
 """数据获取模块的单元测试。"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,15 +15,17 @@ class TestQmtToDpointSingle:
         """QMT 列名应正确映射为 Dpoint_Trader 内部列名。"""
         from dpoint.data.fetch.formatter import qmt_to_dpoint_single
 
-        raw = pd.DataFrame({
-            "time": [1609459200000, 1609545600000],  # 2021-01-01, 2021-01-02
-            "open": [10.0, 10.5],
-            "high": [10.5, 11.0],
-            "low": [9.5, 10.0],
-            "close": [10.2, 10.8],
-            "volume": [100000, 120000],
-            "amount": [1020000.0, 1296000.0],
-        })
+        raw = pd.DataFrame(
+            {
+                "time": [1609459200000, 1609545600000],  # 2021-01-01, 2021-01-02
+                "open": [10.0, 10.5],
+                "high": [10.5, 11.0],
+                "low": [9.5, 10.0],
+                "close": [10.2, 10.8],
+                "volume": [100000, 120000],
+                "amount": [1020000.0, 1296000.0],
+            }
+        )
         df = qmt_to_dpoint_single(raw)
 
         assert "date" in df.columns
@@ -37,11 +40,17 @@ class TestQmtToDpointSingle:
         """毫秒时间戳应转换为 datetime。"""
         from dpoint.data.fetch.formatter import qmt_to_dpoint_single
 
-        raw = pd.DataFrame({
-            "time": [1609459200000],
-            "open": [10.0], "high": [10.5], "low": [9.5], "close": [10.2],
-            "volume": [100000], "amount": [1020000.0],
-        })
+        raw = pd.DataFrame(
+            {
+                "time": [1609459200000],
+                "open": [10.0],
+                "high": [10.5],
+                "low": [9.5],
+                "close": [10.2],
+                "volume": [100000],
+                "amount": [1020000.0],
+            }
+        )
         df = qmt_to_dpoint_single(raw)
 
         assert pd.api.types.is_datetime64_any_dtype(df["date"])
@@ -51,15 +60,17 @@ class TestQmtToDpointSingle:
         """输出 DataFrame 应按日期升序排列。"""
         from dpoint.data.fetch.formatter import qmt_to_dpoint_single
 
-        raw = pd.DataFrame({
-            "time": [1609545600000, 1609459200000],  # 反序
-            "open": [10.5, 10.0],
-            "high": [11.0, 10.5],
-            "low": [10.0, 9.5],
-            "close": [10.8, 10.2],
-            "volume": [120000, 100000],
-            "amount": [1296000.0, 1020000.0],
-        })
+        raw = pd.DataFrame(
+            {
+                "time": [1609545600000, 1609459200000],  # 反序
+                "open": [10.5, 10.0],
+                "high": [11.0, 10.5],
+                "low": [10.0, 9.5],
+                "close": [10.8, 10.2],
+                "volume": [120000, 100000],
+                "amount": [1296000.0, 1020000.0],
+            }
+        )
         df = qmt_to_dpoint_single(raw)
 
         assert df["date"].is_monotonic_increasing
@@ -82,11 +93,17 @@ class TestQmtToDpointCsv:
         """篮子 CSV 应使用 Dpoint_Trader 外部列名。"""
         from dpoint.data.fetch.formatter import qmt_to_dpoint_csv
 
-        raw = pd.DataFrame({
-            "time": [1609459200000],
-            "open": [10.0], "high": [10.5], "low": [9.5], "close": [10.2],
-            "volume": [100000], "amount": [1020000.0],
-        })
+        raw = pd.DataFrame(
+            {
+                "time": [1609459200000],
+                "open": [10.0],
+                "high": [10.5],
+                "low": [9.5],
+                "close": [10.2],
+                "volume": [100000],
+                "amount": [1020000.0],
+            }
+        )
         df = qmt_to_dpoint_csv(raw)
 
         assert "Date" in df.columns
@@ -100,11 +117,17 @@ class TestQmtToDpointCsv:
         """日期格式应为 YYYY/M/D（无前导零）。"""
         from dpoint.data.fetch.formatter import qmt_to_dpoint_csv
 
-        raw = pd.DataFrame({
-            "time": [1609459200000],  # 2021-01-01
-            "open": [10.0], "high": [10.5], "low": [9.5], "close": [10.2],
-            "volume": [100000], "amount": [1020000.0],
-        })
+        raw = pd.DataFrame(
+            {
+                "time": [1609459200000],  # 2021-01-01
+                "open": [10.0],
+                "high": [10.5],
+                "low": [9.5],
+                "close": [10.2],
+                "volume": [100000],
+                "amount": [1020000.0],
+            }
+        )
         df = qmt_to_dpoint_csv(raw)
 
         assert df["Date"].iloc[0] == "2021/1/1"

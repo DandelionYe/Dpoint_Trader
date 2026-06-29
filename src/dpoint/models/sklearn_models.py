@@ -2,6 +2,7 @@
 """
 sklearn / XGBoost 模型工厂。
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -15,35 +16,48 @@ def create_sklearn_model(model_type: str, config: Dict[str, Any]) -> Any:
         from sklearn.linear_model import LogisticRegression
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
-        return Pipeline([
-            ("scaler", StandardScaler()),
-            ("model", LogisticRegression(
-                C=config.get("C", 1.0),
-                penalty=config.get("penalty", "l2"),
-                solver="saga" if config.get("penalty") == "l1" else "lbfgs",
-                max_iter=1000,
-                class_weight=config.get("class_weight", None),
-            )),
-        ])
+
+        return Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                (
+                    "model",
+                    LogisticRegression(
+                        C=config.get("C", 1.0),
+                        penalty=config.get("penalty", "l2"),
+                        solver="saga" if config.get("penalty") == "l1" else "lbfgs",
+                        max_iter=1000,
+                        class_weight=config.get("class_weight", None),
+                    ),
+                ),
+            ]
+        )
 
     elif model_type == "sgd":
         from sklearn.linear_model import SGDClassifier
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
-        return Pipeline([
-            ("scaler", StandardScaler()),
-            ("model", SGDClassifier(
-                loss="log_loss",
-                alpha=config.get("alpha", 1e-4),
-                penalty=config.get("penalty", "l2"),
-                max_iter=1000,
-                class_weight=config.get("class_weight", None),
-            )),
-        ])
+
+        return Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                (
+                    "model",
+                    SGDClassifier(
+                        loss="log_loss",
+                        alpha=config.get("alpha", 1e-4),
+                        penalty=config.get("penalty", "l2"),
+                        max_iter=1000,
+                        class_weight=config.get("class_weight", None),
+                    ),
+                ),
+            ]
+        )
 
     elif model_type == "xgb":
         try:
             from xgboost import XGBClassifier
+
             return XGBClassifier(
                 n_estimators=config.get("n_estimators", 200),
                 max_depth=config.get("max_depth", 3),
@@ -57,6 +71,7 @@ def create_sklearn_model(model_type: str, config: Dict[str, Any]) -> Any:
             )
         except ImportError:
             from sklearn.ensemble import GradientBoostingClassifier
+
             return GradientBoostingClassifier(
                 n_estimators=config.get("n_estimators", 200),
                 max_depth=config.get("max_depth", 3),

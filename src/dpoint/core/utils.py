@@ -3,6 +3,7 @@
 通用工具：种子设置、哈希、manifest、git 信息。
 合并自两个项目的 repro.py / utils.py / run_manifest.py。
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -26,12 +27,14 @@ logger = logging.getLogger(__name__)
 # 种子管理
 # ==============================================================
 
+
 def set_global_seed(seed: int = 42) -> None:
     """设置全局随机种子（Python / NumPy / PyTorch）。"""
     random.seed(seed)
     np.random.seed(seed)
     try:
         import torch
+
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
@@ -46,13 +49,12 @@ def set_global_seed(seed: int = 42) -> None:
 # 哈希工具
 # ==============================================================
 
+
 def compute_data_hash(df: pd.DataFrame) -> str:
     """计算 DataFrame 的 SHA-256 哈希。"""
     sort_cols = [c for c in ["date", "ticker"] if c in df.columns]
     sorted_df = df.sort_values(sort_cols).reset_index(drop=True) if sort_cols else df
-    return hashlib.sha256(
-        pd.util.hash_pandas_object(sorted_df).values.tobytes()
-    ).hexdigest()
+    return hashlib.sha256(pd.util.hash_pandas_object(sorted_df).values.tobytes()).hexdigest()
 
 
 def compute_config_hash(config: dict) -> str:
@@ -65,12 +67,15 @@ def compute_config_hash(config: dict) -> str:
 # Git 信息
 # ==============================================================
 
+
 def get_git_commit_hash() -> str:
     """获取当前 git commit hash。"""
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         return result.stdout.strip() if result.returncode == 0 else "unknown"
     except Exception:
@@ -81,12 +86,14 @@ def get_git_commit_hash() -> str:
 # 包版本
 # ==============================================================
 
+
 def get_package_versions(packages: list[str]) -> dict[str, str]:
     """获取指定包的版本号。"""
     versions = {}
     for pkg in packages:
         try:
             import importlib
+
             mod = importlib.import_module(pkg.replace("-", "_"))
             versions[pkg] = getattr(mod, "__version__", "unknown")
         except (ImportError, OSError, Exception):
@@ -97,6 +104,7 @@ def get_package_versions(packages: list[str]) -> dict[str, str]:
 # ==============================================================
 # 实验目录管理
 # ==============================================================
+
 
 def create_experiment_dir(output_dir: str, prefix: str = "exp") -> Path:
     """创建实验输出目录，自动编号。"""

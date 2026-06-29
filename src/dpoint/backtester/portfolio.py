@@ -3,6 +3,7 @@
 组合回测引擎：多股票 Top-K 选股 + 调仓。
 来自 Ver1.0 的 portfolio_backtester.py。
 """
+
 from __future__ import annotations
 
 import logging
@@ -12,13 +13,25 @@ import numpy as np
 import pandas as pd
 
 from dpoint.core.constants import (
-    DEFAULT_BUY_COMMISSION_RATE, DEFAULT_CASH_BUFFER, DEFAULT_LIMIT_DOWN_PCT,
-    DEFAULT_LIMIT_UP_PCT, DEFAULT_MAX_WEIGHT, DEFAULT_REBALANCE_FREQ,
-    DEFAULT_SELL_COMMISSION_RATE, DEFAULT_SELL_STAMP_DUTY_RATE,
-    DEFAULT_SLIPPAGE_BPS, DEFAULT_TOP_K, DEFAULT_WEIGHTING,
+    DEFAULT_BUY_COMMISSION_RATE,
+    DEFAULT_CASH_BUFFER,
+    DEFAULT_LIMIT_DOWN_PCT,
+    DEFAULT_LIMIT_UP_PCT,
+    DEFAULT_MAX_WEIGHT,
+    DEFAULT_REBALANCE_FREQ,
+    DEFAULT_SELL_COMMISSION_RATE,
+    DEFAULT_SELL_STAMP_DUTY_RATE,
+    DEFAULT_SLIPPAGE_BPS,
+    DEFAULT_TOP_K,
+    DEFAULT_WEIGHTING,
 )
 from dpoint.backtester.base import BacktestResult, ExecutionStats, compute_risk_metrics
-from dpoint.backtester.execution import apply_slippage, calc_buy_shares, calc_buy_cost, calc_sell_proceeds
+from dpoint.backtester.execution import (
+    apply_slippage,
+    calc_buy_shares,
+    calc_buy_cost,
+    calc_sell_proceeds,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +152,12 @@ def backtest_from_scores(
                     if ticker in day_data.index:
                         open_p = float(day_data.loc[ticker, "open_qfq"])
                         exec_price = apply_slippage(open_p, "SELL", slippage_bps)
-                        proceeds = calc_sell_proceeds(positions[ticker]["shares"], exec_price, commission_rate_sell, stamp_duty)
+                        proceeds = calc_sell_proceeds(
+                            positions[ticker]["shares"],
+                            exec_price,
+                            commission_rate_sell,
+                            stamp_duty,
+                        )
                         cash += proceeds
                         stats.add_fill(abs(exec_price - open_p) * positions[ticker]["shares"])
                     del positions[ticker]
@@ -150,14 +168,18 @@ def backtest_from_scores(
                 target_value = portfolio_value * weight
                 current_value = 0
                 if ticker in positions and ticker in day_data.index:
-                    current_value = positions[ticker]["shares"] * float(day_data.loc[ticker, "close_qfq"])
+                    current_value = positions[ticker]["shares"] * float(
+                        day_data.loc[ticker, "close_qfq"]
+                    )
 
                 if target_value > current_value + 100:
                     buy_value = target_value - current_value
                     if ticker in day_data.index and buy_value > 0:
                         open_p = float(day_data.loc[ticker, "open_qfq"])
                         exec_price = apply_slippage(open_p, "BUY", slippage_bps)
-                        shares_to_buy = calc_buy_shares(min(buy_value, available_cash), exec_price, commission_rate_buy)
+                        shares_to_buy = calc_buy_shares(
+                            min(buy_value, available_cash), exec_price, commission_rate_buy
+                        )
                         if shares_to_buy > 0:
                             cost = calc_buy_cost(shares_to_buy, exec_price, commission_rate_buy)
                             if cost <= available_cash:
@@ -165,10 +187,19 @@ def backtest_from_scores(
                                     # 加仓：更新均价
                                     old = positions[ticker]
                                     total_shares = old["shares"] + shares_to_buy
-                                    avg_price = (old["entry_price"] * old["shares"] + exec_price * shares_to_buy) / total_shares
-                                    positions[ticker] = {"shares": total_shares, "entry_price": avg_price}
+                                    avg_price = (
+                                        old["entry_price"] * old["shares"]
+                                        + exec_price * shares_to_buy
+                                    ) / total_shares
+                                    positions[ticker] = {
+                                        "shares": total_shares,
+                                        "entry_price": avg_price,
+                                    }
                                 else:
-                                    positions[ticker] = {"shares": shares_to_buy, "entry_price": exec_price}
+                                    positions[ticker] = {
+                                        "shares": shares_to_buy,
+                                        "entry_price": exec_price,
+                                    }
                                 cash -= cost
                                 available_cash -= cost
                                 stats.add_fill(abs(exec_price - open_p) * shares_to_buy)
@@ -180,18 +211,22 @@ def backtest_from_scores(
                 close = float(day_data.loc[ticker, "close_qfq"])
                 portfolio_value += pos["shares"] * close
 
-        equity_rows.append({
-            "date": dt,
-            "cash": cash,
-            "n_positions": len(positions),
-            "total_equity": portfolio_value,
-        })
+        equity_rows.append(
+            {
+                "date": dt,
+                "cash": cash,
+                "n_positions": len(positions),
+                "total_equity": portfolio_value,
+            }
+        )
 
     # 组装结果
     equity_curve = pd.DataFrame(equity_rows)
     if not equity_curve.empty:
         equity_curve["cum_max_equity"] = equity_curve["total_equity"].cummax()
-        equity_curve["drawdown"] = equity_curve["total_equity"] / equity_curve["cum_max_equity"] - 1.0
+        equity_curve["drawdown"] = (
+            equity_curve["total_equity"] / equity_curve["cum_max_equity"] - 1.0
+        )
 
     risk_metrics = compute_risk_metrics(equity_curve, initial_cash)
 

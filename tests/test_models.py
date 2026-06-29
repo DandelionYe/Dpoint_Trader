@@ -1,5 +1,6 @@
 # test_models.py
 """模型创建和基本前向传播测试。"""
+
 import sys
 from pathlib import Path
 
@@ -46,6 +47,7 @@ def test_torch_mlp():
         pytest.skip("PyTorch not available")
 
     from dpoint.models.torch_models import create_dl_model
+
     model = create_dl_model("mlp", input_dim=10, config={"hidden_dim": 32, "num_layers": 2})
     X = torch.randn(8, 10)
     out = model(X)
@@ -59,6 +61,7 @@ def test_torch_lstm():
         pytest.skip("PyTorch not available")
 
     from dpoint.models.torch_models import create_dl_model
+
     model = create_dl_model("lstm", input_dim=10, config={"hidden_dim": 32, "seq_len": 5})
     X = torch.randn(8, 5, 10)
     out = model(X)
@@ -72,7 +75,10 @@ def test_torch_transformer():
         pytest.skip("PyTorch not available")
 
     from dpoint.models.torch_models import create_dl_model
-    model = create_dl_model("transformer", input_dim=10, config={"hidden_dim": 32, "nhead": 4, "num_layers": 1})
+
+    model = create_dl_model(
+        "transformer", input_dim=10, config={"hidden_dim": 32, "nhead": 4, "num_layers": 1}
+    )
     X = torch.randn(8, 5, 10)
     out = model(X)
     assert out.shape == (8, 1)

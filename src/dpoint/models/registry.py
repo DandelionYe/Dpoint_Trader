@@ -3,6 +3,7 @@
 统一模型注册表：make_model 工厂函数。
 支持 binary/multiclass/regression 三种 task_type。
 """
+
 from __future__ import annotations
 
 import logging
@@ -43,11 +44,13 @@ def make_model(
 
     if model_type in ML_MODELS:
         from dpoint.models.sklearn_models import create_sklearn_model
+
         model = create_sklearn_model(model_type, config)
         return model, "sklearn"
 
     elif model_type in DL_MODELS:
         from dpoint.models.torch_models import create_dl_model
+
         model = create_dl_model(model_type, input_dim, config, output_dim=output_dim)
         return model, "torch"
 

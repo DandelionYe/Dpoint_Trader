@@ -3,6 +3,7 @@
 标签构建器：支持 binary / multiclass / regression 三种模式。
 来自 DpointTrader_deeplearning_Ver1.0/labeler.py。
 """
+
 from __future__ import annotations
 
 import logging

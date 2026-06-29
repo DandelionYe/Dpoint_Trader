@@ -5,6 +5,7 @@
 所有 rolling 操作在 groupby(ticker) 内进行，避免跨 ticker 泄露。
 单股模式下传入单 ticker 面板即可复用。
 """
+
 from __future__ import annotations
 
 import logging
@@ -26,6 +27,7 @@ class FeatureGroupMeta:
 # =========================================================
 # 工具函数
 # =========================================================
+
 
 def _apply_per_ticker(df: pd.DataFrame, ticker_col: str, func) -> pd.DataFrame:
     """在每个 ticker 组内独立应用函数。"""
@@ -52,8 +54,12 @@ def _rolling_zscore(x: pd.Series, window: int) -> pd.Series:
 # 动量特征
 # =========================================================
 
+
 def add_momentum_features(
-    df: pd.DataFrame, *, ticker_col: str = "ticker", close_col: str = "close_qfq",
+    df: pd.DataFrame,
+    *,
+    ticker_col: str = "ticker",
+    close_col: str = "close_qfq",
     windows: Optional[List[int]] = None,
 ) -> Tuple[pd.DataFrame, List[str]]:
     if windows is None:
@@ -80,11 +86,17 @@ def add_momentum_features(
 # 波动率特征
 # =========================================================
 
+
 def add_volatility_features(
-    df: pd.DataFrame, *, ticker_col: str = "ticker",
-    high_col: str = "high_qfq", low_col: str = "low_qfq",
-    close_col: str = "close_qfq", open_col: str = "open_qfq",
-    windows: Optional[List[int]] = None, vol_metric: str = "std",
+    df: pd.DataFrame,
+    *,
+    ticker_col: str = "ticker",
+    high_col: str = "high_qfq",
+    low_col: str = "low_qfq",
+    close_col: str = "close_qfq",
+    open_col: str = "open_qfq",
+    windows: Optional[List[int]] = None,
+    vol_metric: str = "std",
 ) -> Tuple[pd.DataFrame, List[str]]:
     if windows is None:
         windows = [5, 10, 20]
@@ -98,7 +110,9 @@ def add_volatility_features(
         feature_names.append("hl_range")
         # 真实波幅
         prev_close = close.shift(1)
-        tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
+        tr = pd.concat(
+            [high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1
+        ).max(axis=1)
         result["true_range_norm"] = tr / close.replace(0, np.nan)
         feature_names.append("true_range_norm")
         # 滚动波动率
@@ -121,10 +135,15 @@ def add_volatility_features(
 # 成交量特征
 # =========================================================
 
+
 def add_volume_features(
-    df: pd.DataFrame, *, ticker_col: str = "ticker",
-    volume_col: str = "volume", amount_col: str = "amount",
-    windows: Optional[List[int]] = None, liq_transform: str = "ratio",
+    df: pd.DataFrame,
+    *,
+    ticker_col: str = "ticker",
+    volume_col: str = "volume",
+    amount_col: str = "amount",
+    windows: Optional[List[int]] = None,
+    liq_transform: str = "ratio",
 ) -> Tuple[pd.DataFrame, List[str]]:
     if windows is None:
         windows = [5, 10, 20]
@@ -159,10 +178,15 @@ def add_volume_features(
 # K线形态特征
 # =========================================================
 
+
 def add_candle_features(
-    df: pd.DataFrame, *, ticker_col: str = "ticker",
-    open_col: str = "open_qfq", high_col: str = "high_qfq",
-    low_col: str = "low_qfq", close_col: str = "close_qfq",
+    df: pd.DataFrame,
+    *,
+    ticker_col: str = "ticker",
+    open_col: str = "open_qfq",
+    high_col: str = "high_qfq",
+    low_col: str = "low_qfq",
+    close_col: str = "close_qfq",
 ) -> Tuple[pd.DataFrame, List[str]]:
     feature_names = []
 
@@ -172,7 +196,9 @@ def add_candle_features(
         body = close - opn
         hl = (high - low).replace(0, np.nan)
         result["candle_body"] = body / hl
-        result["candle_upper_shadow"] = (high - close.clip(upper=opn.where(close > opn, close))) / hl
+        result["candle_upper_shadow"] = (
+            high - close.clip(upper=opn.where(close > opn, close))
+        ) / hl
         result["candle_lower_shadow"] = (close.clip(lower=opn.where(close < opn, close)) - low) / hl
         feature_names.extend(["candle_body", "candle_upper_shadow", "candle_lower_shadow"])
         return result
@@ -185,8 +211,11 @@ def add_candle_features(
 # 换手率特征
 # =========================================================
 
+
 def add_turnover_features(
-    df: pd.DataFrame, *, ticker_col: str = "ticker",
+    df: pd.DataFrame,
+    *,
+    ticker_col: str = "ticker",
     turnover_col: str = "turnover_rate",
     windows: Optional[List[int]] = None,
 ) -> Tuple[pd.DataFrame, List[str]]:
@@ -215,10 +244,15 @@ def add_turnover_features(
 # 技术指标特征（P3-19）
 # =========================================================
 
+
 def add_ta_indicators(
-    df: pd.DataFrame, *, ticker_col: str = "ticker",
-    close_col: str = "close_qfq", high_col: str = "high_qfq",
-    low_col: str = "low_qfq", volume_col: str = "volume",
+    df: pd.DataFrame,
+    *,
+    ticker_col: str = "ticker",
+    close_col: str = "close_qfq",
+    high_col: str = "high_qfq",
+    low_col: str = "low_qfq",
+    volume_col: str = "volume",
     windows: Optional[List[int]] = None,
 ) -> Tuple[pd.DataFrame, List[str]]:
     """RSI、MACD、布林带宽、OBV — 均不引入前向偏差。"""
@@ -275,6 +309,7 @@ def add_ta_indicators(
 # 汇总：添加所有特征
 # =========================================================
 
+
 def add_all_features(
     df: pd.DataFrame,
     *,
@@ -296,10 +331,14 @@ def add_all_features(
         df, names = add_momentum_features(df, ticker_col=ticker_col, windows=windows)
         all_feature_names.extend(names)
     if use_volatility:
-        df, names = add_volatility_features(df, ticker_col=ticker_col, windows=windows, vol_metric=vol_metric)
+        df, names = add_volatility_features(
+            df, ticker_col=ticker_col, windows=windows, vol_metric=vol_metric
+        )
         all_feature_names.extend(names)
     if use_volume:
-        df, names = add_volume_features(df, ticker_col=ticker_col, windows=windows, liq_transform=liq_transform)
+        df, names = add_volume_features(
+            df, ticker_col=ticker_col, windows=windows, liq_transform=liq_transform
+        )
         all_feature_names.extend(names)
     if use_candle:
         df, names = add_candle_features(df, ticker_col=ticker_col)

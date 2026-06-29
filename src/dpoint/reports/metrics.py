@@ -3,6 +3,7 @@
 因子评价指标：Rank IC / ICIR / Top-K Return / 分层收益。
 来自 Ver1.0/ranking_metrics.py。
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RankingMetrics:
     """因子排名指标汇总。"""
+
     ic_mean: Optional[float] = None
     ic_std: Optional[float] = None
     ic_ir: Optional[float] = None

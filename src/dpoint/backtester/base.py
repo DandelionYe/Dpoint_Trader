@@ -3,6 +3,7 @@
 统一的 BacktestResult 数据类和风险指标计算。
 单股和组合回测共用此接口。
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -15,6 +16,7 @@ import pandas as pd
 @dataclass
 class ExecutionStats:
     """执行统计。"""
+
     orders_submitted: int = 0
     orders_filled: int = 0
     orders_rejected: int = 0
@@ -42,6 +44,7 @@ class ExecutionStats:
 @dataclass
 class BacktestResult:
     """统一的回测结果。"""
+
     equity_curve: pd.DataFrame
     trades: pd.DataFrame
     risk_metrics: Dict[str, float]
@@ -53,7 +56,9 @@ class BacktestResult:
     benchmark: Optional[pd.DataFrame] = None
 
 
-def compute_risk_metrics(equity_curve: pd.DataFrame, initial_cash: float = 100_000.0) -> Dict[str, float]:
+def compute_risk_metrics(
+    equity_curve: pd.DataFrame, initial_cash: float = 100_000.0
+) -> Dict[str, float]:
     """
     从净值曲线计算风险指标。
 
@@ -103,7 +108,7 @@ def compute_risk_metrics(equity_curve: pd.DataFrame, initial_cash: float = 100_0
 
     # 最大回撤持续天数
     dd_end = int(np.argmin(drawdown))
-    dd_start = int(np.argmax(equity[:dd_end + 1])) if dd_end > 0 else 0
+    dd_start = int(np.argmax(equity[: dd_end + 1])) if dd_end > 0 else 0
     max_dd_days = dd_end - dd_start
 
     # Calmar
