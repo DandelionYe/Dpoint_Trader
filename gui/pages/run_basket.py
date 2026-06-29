@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from nicegui import ui
 
 from gui.components.layout import create_page_layout
@@ -21,6 +23,18 @@ from gui.state import app_state
 from gui.utils import safe_int, run_experiment_subprocess
 
 
+def _scan_basket_dirs(data_dir: str | Path = "data") -> list[str]:
+    """扫描 data/ 目录，返回包含 CSV 文件的子目录列表。"""
+    data_path = Path(data_dir)
+    if not data_path.is_dir():
+        return []
+    baskets = []
+    for d in sorted(data_path.iterdir()):
+        if d.is_dir() and list(d.glob("*.csv")):
+            baskets.append(d.name)
+    return baskets
+
+
 @ui.page("/run/basket")
 def run_basket_page():
     create_page_layout()
@@ -35,11 +49,25 @@ def run_basket_page():
         with ui.card().classes("w-full"):
             ui.label("基本参数").classes("text-h6")
             ui.separator()
+
+            # 自动检测篮子目录
+            basket_dirs = _scan_basket_dirs("data")
+            basket_options = basket_dirs + ["(手动输入)"]
+
             with ui.row().classes("gap-4 w-full"):
-                basket_path = ui.input(
+                basket_select = ui.select(
+                    basket_options,
                     label="篮子数据目录",
+                    value=basket_dirs[0] if basket_dirs else "(手动输入)",
+                ).tooltip("自动检测 data/ 下包含 CSV 文件的目录")
+
+                basket_manual = ui.input(
+                    label="自定义路径",
                     placeholder="如: data/basket/",
-                ).tooltip("包含多个 CSV 文件的目录，每个文件对应一只股票")
+                )
+                # 仅在选择"手动输入"时显示
+                basket_manual.visible = (basket_select.value == "(手动输入)")
+                basket_select.on_value_change(lambda e: setattr(basket_manual, "visible", e.value == "(手动输入)"))
 
                 output_dir = ui.input(
                     label="输出目录", value=app_state.output_dir
@@ -90,9 +118,15 @@ def run_basket_page():
             split_vals = collect_form_values(split_widgets)
             portfolio_vals = collect_form_values(portfolio_widgets)
 
+            # 确定篮子路径
+            if basket_select.value == "(手动输入)":
+                resolved_basket_path = (basket_manual.value or "").strip()
+            else:
+                resolved_basket_path = f"data/{basket_select.value}"
+
             config_dict = {
                 "mode": "basket",
-                "basket_path": (basket_path.value or "").strip(),
+                "basket_path": resolved_basket_path,
                 "output_dir": output_dir.value or "output",
                 "seed": safe_int(search_vals.get("seed"), 42),
                 "device": device.value,
@@ -112,7 +146,7 @@ def run_basket_page():
             await run_experiment_subprocess(
                 subcommand="basket",
                 primary_arg_name="--basket_path",
-                primary_arg_value=basket_path.value or "",
+                primary_arg_value=resolved_basket_path,
                 config_dict=config_dict,
                 label="篮子策略",
                 run_button=run_button,

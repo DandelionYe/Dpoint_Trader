@@ -105,8 +105,8 @@ def _create_single_tab():
             )
             output_input = ui.input(
                 label="输出路径",
-                value=app_state.output_dir,
-                placeholder="如: data/",
+                value="data",
+                placeholder="留空则自动存入 data/",
             )
 
     # 运行按钮
@@ -135,7 +135,7 @@ def _create_single_tab():
                 "--code", code,
                 "--start", (start_input.value or "").strip(),
                 "--end", (end_input.value or "").strip(),
-                "--output", (output_input.value or app_state.output_dir).strip(),
+                "--output", (output_input.value or "data").strip(),
                 "--format", format_select.value or "xlsx",
             ]
 
@@ -269,8 +269,8 @@ def _build_basket_form(db):
             )
             output_input = ui.input(
                 label="输出目录",
-                value=app_state.output_dir,
-                placeholder="如: data/",
+                value="",
+                placeholder="留空自动生成 data/basket_{筛选条件}",
             )
             format_select = ui.select(
                 ["csv", "xlsx"],
@@ -326,9 +326,12 @@ def _build_basket_form(db):
                 *args,
                 "--start", (start_input.value or "").strip(),
                 "--end", (end_input.value or "").strip(),
-                "--output", (output_input.value or app_state.output_dir).strip(),
                 "--format", format_select.value or "csv",
             ]
+            # 仅在用户指定了自定义输出目录时传递 --output
+            custom_output = (output_input.value or "").strip()
+            if custom_output:
+                cmd += ["--output", custom_output]
 
             log, status_label, progress = create_log_panel("获取篮子")
             ui.notify("开始获取篮子数据...", type="info")
