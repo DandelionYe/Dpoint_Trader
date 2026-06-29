@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -38,7 +38,7 @@ def permutation_importance(
     Returns:
         DataFrame with columns: feature, importance_mean, importance_std
     """
-    from sklearn.metrics import accuracy_score, log_loss
+    from sklearn.metrics import accuracy_score
 
     rng = np.random.Generator(np.random.PCG64(random_state))
 

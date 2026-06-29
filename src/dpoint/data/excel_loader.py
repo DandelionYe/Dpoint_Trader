@@ -12,14 +12,7 @@ from typing import Tuple
 import pandas as pd
 
 from dpoint.core.constants import (
-    COL_AMOUNT,
-    COL_CLOSE,
     COL_DATE,
-    COL_HIGH,
-    COL_LOW,
-    COL_OPEN,
-    COL_TURNOVER,
-    COL_VOLUME,
     OPTIONAL_COLS,
     REQUIRED_COLS_SINGLE,
 )

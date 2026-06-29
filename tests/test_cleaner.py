@@ -4,9 +4,7 @@
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -33,7 +31,7 @@ def test_clean_filters_negative_prices():
         }
     )
     report = DataReport()
-    result = clean_ohlcv(df, report)
+    clean_ohlcv(df, report)
     assert report.rows_after_clean == 4
 
 

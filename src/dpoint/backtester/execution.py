@@ -8,18 +8,13 @@ from __future__ import annotations
 
 from typing import Tuple
 
-import numpy as np
-import pandas as pd
 
 from dpoint.backtester.base import ExecutionStats
 from dpoint.core.constants import (
     DEFAULT_BOARD_LOT,
     DEFAULT_BUY_COMMISSION_RATE,
     DEFAULT_LIMIT_DOWN_PCT,
-    DEFAULT_LIMIT_DOWN_PCT_ST,
     DEFAULT_LIMIT_UP_PCT,
-    DEFAULT_LIMIT_UP_PCT_ST,
-    DEFAULT_MAX_PARTICIPATION_RATE,
     DEFAULT_SELL_COMMISSION_RATE,
     DEFAULT_SELL_STAMP_DUTY_RATE,
     DEFAULT_SLIPPAGE_BPS,
@@ -132,6 +127,5 @@ def execute_order(
         return exec_price, actual_shares, slippage_cost, "filled"
 
     else:  # SELL
-        proceeds = calc_sell_proceeds(shares, exec_price, commission_rate_sell, stamp_duty)
         stats.add_fill(slippage_cost)
         return exec_price, shares, slippage_cost, "filled"

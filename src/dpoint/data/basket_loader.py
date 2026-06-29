@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
-from dpoint.core.constants import COL_DATE, COL_TICKER
+from dpoint.core.constants import COL_TICKER
 from dpoint.data.csv_loader import extract_ticker_from_filename, load_single_csv
 from dpoint.data.panel_builder import align_calendar, build_panel
 

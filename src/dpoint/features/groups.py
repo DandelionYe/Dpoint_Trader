@@ -103,7 +103,7 @@ def add_volatility_features(
     feature_names = []
 
     def calc(group):
-        high, low, close, opn = group[high_col], group[low_col], group[close_col], group[open_col]
+        high, low, close = group[high_col], group[low_col], group[close_col]
         result = pd.DataFrame(index=group.index)
         # 振幅
         result["hl_range"] = (high - low) / close.replace(0, np.nan)
@@ -262,8 +262,6 @@ def add_ta_indicators(
 
     def calc(group):
         close = group[close_col]
-        high = group[high_col]
-        low = group[low_col]
         vol = group[volume_col].astype(float)
         result = pd.DataFrame(index=group.index)
 

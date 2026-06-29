@@ -7,8 +7,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 import numpy as np
 
@@ -103,7 +102,6 @@ def mutate_model_config(
 ) -> Dict[str, Any]:
     """对已有配置进行小扰动（exploit 模式）。"""
     new_config = config.copy()
-    model_type = config.get("model_type", "lstm")
 
     for key in config:
         if key == "model_type":

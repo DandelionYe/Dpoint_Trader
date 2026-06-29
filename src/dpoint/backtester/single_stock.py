@@ -7,9 +7,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict
 
-import numpy as np
 import pandas as pd
 
 from dpoint.backtester.base import BacktestResult, ExecutionStats, compute_risk_metrics
@@ -19,7 +18,6 @@ from dpoint.backtester.execution import (
     calc_buy_shares,
     calc_sell_proceeds,
     check_limit,
-    execute_order,
 )
 from dpoint.core.constants import (
     DEFAULT_BUY_COMMISSION_RATE,
@@ -117,8 +115,6 @@ def backtest_from_dpoint(
     equity_rows = []
     stats = ExecutionStats()
     notes = []
-
-    dates = signal_df["date"].values
 
     for i in range(1, len(signal_df)):
         row = signal_df.iloc[i]

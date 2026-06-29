@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-import numpy as np
-
 
 def create_sklearn_model(model_type: str, config: Dict[str, Any]) -> Any:
     """创建 sklearn/XGBoost 模型。"""

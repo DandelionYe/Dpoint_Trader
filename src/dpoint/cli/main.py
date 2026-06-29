@@ -12,18 +12,15 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict
 
 import numpy as np
 
 from dpoint.core.config import (
-    FeatureConfig,
     ModelConfig,
     PortfolioConfig,
     RunConfig,
     SearchConfig,
     SplitConfig,
-    TradeConfig,
 )
 from dpoint.core.utils import (
     compute_data_hash,
@@ -272,7 +269,6 @@ def run_single(args) -> int:
         logger.info("Training final model with best config...")
         from dpoint.backtester.single_stock import (
             backtest_from_dpoint,
-            compute_fold_metrics,
         )
         from dpoint.core.config import FeatureConfig
         from dpoint.core.tasks import resolve_label_spec

@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 from dpoint.core.config import RunConfig
-from dpoint.search.metrics import MetricFn, get_metric_fn
+from dpoint.search.metrics import get_metric_fn
 from dpoint.search.space import (
     ALL_MODELS,
     mutate_model_config,

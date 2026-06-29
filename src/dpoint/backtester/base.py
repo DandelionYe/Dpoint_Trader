@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -129,5 +129,7 @@ def compute_risk_metrics(
         "max_drawdown": round(max_dd, 6),
         "max_drawdown_days": max_dd_days,
         "calmar": round(calmar, 4),
+        "win_rate": round(win_rate, 4),
+        "profit_factor": round(profit_factor, 4),
         "n_days": n_days,
     }

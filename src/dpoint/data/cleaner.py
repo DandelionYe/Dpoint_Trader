@@ -18,7 +18,6 @@ from dpoint.core.constants import (
     COL_HIGH,
     COL_LOW,
     COL_OPEN,
-    COL_TURNOVER,
     COL_VOLUME,
 )
 
@@ -96,7 +95,8 @@ def clean_ohlcv(df: pd.DataFrame, report: DataReport | None = None) -> pd.DataFr
         df = df[mask]
 
     # 6. 衍生列：amount 缺失时用均价 * 成交量
-    if COL_AMOUNT not in df.columns and all(c in df.columns for c in [COL_OPEN, COL_HIGH, COL_LOW, COL_CLOSE, COL_VOLUME]):
+    required_cols = [COL_OPEN, COL_HIGH, COL_LOW, COL_CLOSE, COL_VOLUME]
+    if COL_AMOUNT not in df.columns and all(c in df.columns for c in required_cols):
         df[COL_AMOUNT] = ((df[COL_OPEN] + df[COL_HIGH] + df[COL_LOW] + df[COL_CLOSE]) / 4) * df[COL_VOLUME]
         report.derived_cols.append(COL_AMOUNT)
         report.notes.append("Derived 'amount' from OHLC avg * volume")

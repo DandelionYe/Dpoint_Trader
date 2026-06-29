@@ -4,20 +4,17 @@
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from dpoint.core.config import FeatureConfig
 from dpoint.features.groups import (
-    add_all_features,
     add_momentum_features,
     add_volatility_features,
 )
 from dpoint.features.labeler import build_label
-from dpoint.features.pipeline import FeatureMeta, build_features_and_labels
+from dpoint.features.pipeline import build_features_and_labels
 
 
 def test_momentum_features(sample_panel_df):
@@ -67,7 +64,7 @@ def test_no_future_leakage(sample_single_df):
     # 前 150 行的特征值应该一致
     common_idx = df_trunc.index.intersection(df_full.index)
     if len(common_idx) > 0:
-        feat = meta_feature_names = [
+        feat = [
             c
             for c in df_trunc.columns
             if c

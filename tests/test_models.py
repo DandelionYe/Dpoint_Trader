@@ -10,7 +10,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from dpoint.core.tasks import LabelSpec
-from dpoint.models.registry import DL_MODELS, ML_MODELS, make_model
+from dpoint.models.registry import make_model
 from dpoint.models.sklearn_models import create_sklearn_model
 
 
@@ -92,7 +92,7 @@ def test_make_model_sklearn():
 
 def test_make_model_torch():
     try:
-        import torch
+        pass
     except ImportError:
         pytest.skip("PyTorch not available")
 

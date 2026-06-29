@@ -6,7 +6,7 @@ PyTorch 深度学习模型定义：MLP / LSTM / GRU / CNN1D / Transformer。
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import numpy as np
 

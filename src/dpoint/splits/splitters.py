@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import pandas as pd
 
@@ -122,7 +122,6 @@ def walkforward_splits_with_embargo(
     if embargo_days <= 0:
         return results
 
-    dates = _unique_dates(df, date_col)
     embargo_results = []
     for r in results:
         # 从训练集末尾移除 embargo_days
