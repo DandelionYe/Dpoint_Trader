@@ -24,6 +24,8 @@ from dpoint.core.utils import (
     save_config, set_global_seed,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
